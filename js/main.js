@@ -62,6 +62,18 @@ const WAYPOINTS = {
 
 // ===== Trigger Zones Definition (includes waypoint teleport positions) =====
 const ZONES = {
+    entrance: {
+        xMin: -5, xMax: 5,     // Center of room
+        zMin: -10, zMax: -1,    // Near front wall with Valentino Hose text
+        icon: '👋',
+        title: 'VALENTINO HOSE',
+        items: [
+            { title: 'Informatics Student', sub: 'Maranatha Christian Univ.', detail: 'Fresh Graduate 2028' },
+            { title: 'Email', sub: 'valentinohose@gmail.com', detail: '' },
+            { title: 'LinkedIn', sub: 'linkedin.com/in/valentinohose', detail: '' },
+            { title: 'GitHub', sub: 'github.com/VHose', detail: '' }
+        ]
+    },
     academy: {
         xMin: -15, xMax: -4,   // Extended to include waypoint at x=-5
         zMin: -14, zMax: -10,  // Extended to include waypoint at z=-12
