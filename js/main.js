@@ -40,7 +40,74 @@ const state = {
     yaw: Math.PI,
     pitch: 0,
     mouse: new THREE.Vector2(),
-    hoveredObject: null
+    hoveredObject: null,
+    // Teleportation state
+    isTeleporting: false,
+    teleportProgress: 0,
+    teleportStart: { pos: new THREE.Vector3(), yaw: 0, pitch: 0 },
+    teleportTarget: { pos: new THREE.Vector3(), yaw: 0, pitch: 0 },
+    // Zone tracking for debounce
+    currentZone: null
+};
+
+// ===== Waypoint Definitions (facing walls directly) =====
+const WAYPOINTS = {
+    entrance: { pos: new THREE.Vector3(13, 2, -5), yaw: Math.PI, pitch: 0 },
+    academy: { pos: new THREE.Vector3(-5, 2, -12), yaw: Math.PI / 2, pitch: 0 },      // Face left wall
+    organizations: { pos: new THREE.Vector3(5, 2, -22), yaw: -Math.PI / 2, pitch: 0 }, // Face right wall
+    roles: { pos: new THREE.Vector3(-5, 2, -32), yaw: Math.PI / 2, pitch: 0 },         // Face left wall
+    activities: { pos: new THREE.Vector3(5, 2, -42), yaw: -Math.PI / 2, pitch: 0 },    // Face right wall
+    contact: { pos: new THREE.Vector3(0, 2, -55), yaw: Math.PI, pitch: 0 }             // Face end wall
+};
+
+// ===== Trigger Zones Definition =====
+const ZONES = {
+    academy: {
+        zMin: -16, zMax: -8,
+        icon: '🎓',
+        title: 'ACADEMY',
+        items: [
+            { title: 'Maranatha Christian University', sub: '2024 - Present', detail: 'S1 Teknik Informatika' },
+            { title: 'SMAK Kalam Kudus', sub: '2021 - 2024', detail: 'Science Major' }
+        ]
+    },
+    organizations: {
+        zMin: -26, zMax: -18,
+        icon: '🏛️',
+        title: 'ORGANIZATIONS',
+        items: [
+            { title: 'Ketua HMIF', sub: 'Himpunan Mahasiswa', detail: 'Leading Association' },
+            { title: 'Google Ambassador', sub: '2025 - 2026', detail: 'Campus Tech Rep' },
+            { title: 'UKOR Free Fire', sub: 'Cabinet Member', detail: 'Esports Community' }
+        ]
+    },
+    roles: {
+        zMin: -36, zMax: -28,
+        icon: '💼',
+        title: 'MORE ROLES',
+        items: [
+            { title: 'Kemitraan HMIF', sub: 'Active Staff', detail: 'Partnership Division' }
+        ]
+    },
+    activities: {
+        zMin: -46, zMax: -38,
+        icon: '⚡',
+        title: 'ACTIVITIES',
+        items: [
+            { title: 'Lab Staff GWM', sub: 'Internship', detail: 'Laboratory Assistant' },
+            { title: 'Teaching Assistant', sub: 'Logika & Project Next', detail: 'Academic Mentor' }
+        ]
+    },
+    contact: {
+        zMin: -60, zMax: -50,
+        icon: '📧',
+        title: 'CONTACT',
+        items: [
+            { title: 'Email', sub: 'valentinohose@gmail.com', detail: 'Primary Contact' },
+            { title: 'LinkedIn', sub: 'linkedin.com/in/valentinohose', detail: 'Professional Network' },
+            { title: 'GitHub', sub: 'github.com/VHose', detail: 'Code Repository' }
+        ]
+    }
 };
 
 // ===== Scene Setup =====
@@ -697,6 +764,105 @@ function createWallFrame(side, zPos, title, items) {
     return group;
 }
 
+// ===== Lectern (Info Stand) =====
+function createLectern(x, z, side = 'center') {
+    const group = new THREE.Group();
+
+    // Materials
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.6 });
+    const bronzeMat = new THREE.MeshStandardMaterial({ color: 0xB8860B, metalness: 0.7, roughness: 0.3 });
+
+    // Base post
+    const postGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.0, 12);
+    const post = new THREE.Mesh(postGeo, woodMat);
+    post.position.y = 0.5;
+    group.add(post);
+
+    // Reading surface (angled)
+    const surfaceGeo = new THREE.BoxGeometry(0.5, 0.04, 0.4);
+    const surface = new THREE.Mesh(surfaceGeo, woodMat);
+    surface.position.set(0, 1.05, 0.1);
+    surface.rotation.x = -Math.PI / 6;
+    group.add(surface);
+
+    // Info marker (glowing orb)
+    const orbGeo = new THREE.SphereGeometry(0.08, 16, 16);
+    const orbMat = new THREE.MeshBasicMaterial({ color: 0xFFD887 });
+    const orb = new THREE.Mesh(orbGeo, orbMat);
+    orb.position.set(0, 1.2, 0);
+    group.add(orb);
+
+    // Position based on side
+    const xOffset = side === 'left' ? -CONFIG.room.width / 2 + 3 :
+        side === 'right' ? CONFIG.room.width / 2 - 3 : 0;
+    group.position.set(xOffset, 0, z);
+
+    // Rotate to face center of room
+    if (side === 'left') group.rotation.y = -Math.PI / 2;
+    else if (side === 'right') group.rotation.y = Math.PI / 2;
+
+    scene.add(group);
+    return group;
+}
+
+// ===== Info Panel Functions =====
+const infoPanel = document.getElementById('info-panel');
+const infoIcon = document.querySelector('.info-icon');
+const infoTitle = document.querySelector('.info-title');
+const infoContent = document.querySelector('.info-content');
+
+function showInfoPanel(zoneName) {
+    const zone = ZONES[zoneName];
+    if (!zone || !infoPanel) return;
+
+    // Update content
+    if (infoIcon) infoIcon.textContent = zone.icon;
+    if (infoTitle) infoTitle.textContent = zone.title;
+
+    if (infoContent) {
+        infoContent.innerHTML = zone.items.map(item => `
+            <div class="info-item">
+                <div class="info-item-title">${item.title}</div>
+                <div class="info-item-sub">${item.sub}</div>
+                ${item.detail ? `<div class="info-item-detail">${item.detail}</div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    // Show panel
+    infoPanel.classList.remove('hidden');
+    infoPanel.classList.add('visible');
+}
+
+function hideInfoPanel() {
+    if (!infoPanel) return;
+    infoPanel.classList.remove('visible');
+    infoPanel.classList.add('hidden');
+}
+
+function checkZone() {
+    const z = camera.position.z;
+    let newZone = null;
+
+    // Find which zone camera is in (with 0.5 buffer for debounce)
+    for (const [name, zone] of Object.entries(ZONES)) {
+        if (z >= zone.zMin - 0.5 && z <= zone.zMax + 0.5) {
+            newZone = name;
+            break;
+        }
+    }
+
+    // Only update if zone changed (debounce)
+    if (newZone !== state.currentZone) {
+        state.currentZone = newZone;
+        if (newZone) {
+            showInfoPanel(newZone);
+        } else {
+            hideInfoPanel();
+        }
+    }
+}
+
 // ===== Build Scene =====
 function buildScene() {
     createRoom();
@@ -745,6 +911,12 @@ function buildScene() {
     createChandelier(0, -25);   // Middle section 1
     createChandelier(0, -40);   // Middle section 2
     createChandelier(0, -55);   // Near contact section
+
+    // Add lecterns (info stands) at each zone
+    createLectern(0, -12, 'left');   // Academy
+    createLectern(0, -22, 'right');  // Organizations
+    createLectern(0, -32, 'left');   // More Roles
+    createLectern(0, -42, 'right');  // Activities
 
     const loaderEl = document.getElementById('loader');
     if (loaderEl) {
@@ -813,8 +985,87 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// ===== Teleportation Function =====
+function teleportTo(waypointName) {
+    const waypoint = WAYPOINTS[waypointName];
+    if (!waypoint || state.isTeleporting) return;
+
+    // Store starting position
+    state.teleportStart.pos.copy(camera.position);
+    state.teleportStart.yaw = state.yaw;
+    state.teleportStart.pitch = state.pitch;
+
+    // Set target
+    state.teleportTarget.pos.copy(waypoint.pos);
+    state.teleportTarget.yaw = waypoint.yaw;
+    state.teleportTarget.pitch = waypoint.pitch;
+
+    // Start teleportation
+    state.isTeleporting = true;
+    state.teleportProgress = 0;
+
+    // Stop any current movement
+    state.velocity.set(0, 0, 0);
+    state.move.forward = false;
+    state.move.backward = false;
+    state.move.left = false;
+    state.move.right = false;
+}
+
+// Easing function for smooth transitions
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// ===== Waypoint Navigation Event Listeners =====
+const navToggle = document.getElementById('nav-toggle');
+const waypointList = document.getElementById('waypoint-list');
+
+// Toggle menu on hamburger button click
+navToggle?.addEventListener('click', () => {
+    waypointList?.classList.toggle('open');
+});
+
+// Waypoint button clicks
+document.querySelectorAll('.waypoint-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const waypointName = e.currentTarget.dataset.waypoint;
+        teleportTo(waypointName);
+        // Close menu after selection
+        waypointList?.classList.remove('open');
+    });
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#waypoint-nav')) {
+        waypointList?.classList.remove('open');
+    }
+});
+
 function animate() {
     requestAnimationFrame(animate);
+
+    // Handle teleportation animation
+    if (state.isTeleporting) {
+        state.teleportProgress += 0.025; // Speed of transition
+        const t = easeInOutCubic(Math.min(state.teleportProgress, 1));
+
+        // Interpolate position
+        camera.position.lerpVectors(state.teleportStart.pos, state.teleportTarget.pos, t);
+
+        // Interpolate rotation
+        state.yaw = state.teleportStart.yaw + (state.teleportTarget.yaw - state.teleportStart.yaw) * t;
+        state.pitch = state.teleportStart.pitch + (state.teleportTarget.pitch - state.teleportStart.pitch) * t;
+
+        if (state.teleportProgress >= 1) {
+            state.isTeleporting = false;
+            camera.position.copy(state.teleportTarget.pos);
+            state.yaw = state.teleportTarget.yaw;
+            state.pitch = state.teleportTarget.pitch;
+        }
+    }
+
     raycaster.setFromCamera(state.mouse, camera);
     const intersects = raycaster.intersectObjects(clickableObjects);
     if (intersects.length > 0) {
@@ -835,23 +1086,33 @@ function animate() {
             document.body.style.cursor = 'default';
         }
     }
+
     camera.rotation.set(0, 0, 0);
     camera.rotateY(state.yaw);
     camera.rotateX(state.pitch);
-    const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.yaw);
-    const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.yaw);
-    if (state.move.forward) state.velocity.add(forward.multiplyScalar(CONFIG.nav.moveSpeed));
-    if (state.move.backward) state.velocity.sub(forward.multiplyScalar(CONFIG.nav.moveSpeed));
-    if (state.move.left) state.velocity.sub(right.multiplyScalar(CONFIG.nav.moveSpeed));
-    if (state.move.right) state.velocity.add(right.multiplyScalar(CONFIG.nav.moveSpeed));
-    camera.position.add(state.velocity);
-    state.velocity.multiplyScalar(CONFIG.nav.damping);
+
+    // Only process movement if not teleporting
+    if (!state.isTeleporting) {
+        const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.yaw);
+        const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.yaw);
+        if (state.move.forward) state.velocity.add(forward.multiplyScalar(CONFIG.nav.moveSpeed));
+        if (state.move.backward) state.velocity.sub(forward.multiplyScalar(CONFIG.nav.moveSpeed));
+        if (state.move.left) state.velocity.sub(right.multiplyScalar(CONFIG.nav.moveSpeed));
+        if (state.move.right) state.velocity.add(right.multiplyScalar(CONFIG.nav.moveSpeed));
+        camera.position.add(state.velocity);
+        state.velocity.multiplyScalar(CONFIG.nav.damping);
+    }
+
     const halfW = CONFIG.room.width / 2 - 0.5;
     const roomEnd = -CONFIG.room.length + 1;
     const roomStart = -1;
     camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
     camera.position.z = Math.max(roomEnd, Math.min(roomStart, camera.position.z));
     camera.position.y = 1.7;
+
+    // Check trigger zones for info panel
+    checkZone();
+
     renderer.render(scene, camera);
 }
 animate();

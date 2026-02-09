@@ -51,6 +51,30 @@
                 <span>Right Click + Drag to Look</span>
             </div>
         </div>
+
+        <!-- Waypoint Navigation Panel (Hamburger Menu) -->
+        <div id="waypoint-nav">
+            <button id="nav-toggle" aria-label="Toggle Navigation">
+                <span class="hamburger-icon">☰</span>
+            </button>
+            <div class="waypoint-list" id="waypoint-list">
+                <button class="waypoint-btn" data-waypoint="entrance">🚪 Entrance</button>
+                <button class="waypoint-btn" data-waypoint="academy">🎓 Academy</button>
+                <button class="waypoint-btn" data-waypoint="organizations">🏛️ Organizations</button>
+                <button class="waypoint-btn" data-waypoint="roles">💼 More Roles</button>
+                <button class="waypoint-btn" data-waypoint="activities">⚡ Activities</button>
+                <button class="waypoint-btn" data-waypoint="contact">📧 Contact</button>
+            </div>
+        </div>
+
+        <!-- Info Panel (Left Side) - triggered by checkpoint zones -->
+        <div id="info-panel" class="hidden">
+            <div class="info-header">
+                <span class="info-icon"></span>
+                <span class="info-title"></span>
+            </div>
+            <div class="info-content"></div>
+        </div>
     </div>
 
     <canvas id="three-canvas"></canvas>
