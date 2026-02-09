@@ -52,18 +52,19 @@ const state = {
 
 // ===== Waypoint Definitions (facing walls directly) =====
 const WAYPOINTS = {
-    entrance: { pos: new THREE.Vector3(13, 2, -5), yaw: Math.PI, pitch: 0 },
-    academy: { pos: new THREE.Vector3(-5, 2, -12), yaw: Math.PI / 2, pitch: 0 },      // Face left wall
-    organizations: { pos: new THREE.Vector3(5, 2, -22), yaw: -Math.PI / 2, pitch: 0 }, // Face right wall
-    roles: { pos: new THREE.Vector3(-5, 2, -32), yaw: Math.PI / 2, pitch: 0 },         // Face left wall
-    activities: { pos: new THREE.Vector3(5, 2, -42), yaw: -Math.PI / 2, pitch: 0 },    // Face right wall
-    contact: { pos: new THREE.Vector3(0, 2, -55), yaw: Math.PI, pitch: 0 }             // Face end wall
+    entrance: { pos: new THREE.Vector3(13, 2, -5), yaw: Math.PI, pitch: 0.10 },
+    academy: { pos: new THREE.Vector3(-5, 2, -12), yaw: Math.PI / 2, pitch: 0.10 },      // Face left wall
+    organizations: { pos: new THREE.Vector3(5, 2, -22), yaw: -Math.PI / 2, pitch: 0.10 }, // Face right wall
+    roles: { pos: new THREE.Vector3(-5, 2, -32), yaw: Math.PI / 2, pitch: 0.10 },         // Face left wall
+    activities: { pos: new THREE.Vector3(5, 2, -42), yaw: -Math.PI / 2, pitch: 0.10 }, // Face right wall, look up
+    contact: { pos: new THREE.Vector3(0, 2, -55), yaw: 0, pitch: 0.50 }                // Face backward, look up slightly
 };
 
-// ===== Trigger Zones Definition =====
+// ===== Trigger Zones Definition (includes waypoint teleport positions) =====
 const ZONES = {
     academy: {
-        zMin: -16, zMax: -8,
+        xMin: -15, xMax: -4,   // Extended to include waypoint at x=-5
+        zMin: -14, zMax: -10,  // Extended to include waypoint at z=-12
         icon: '🎓',
         title: 'ACADEMY',
         items: [
@@ -72,7 +73,8 @@ const ZONES = {
         ]
     },
     organizations: {
-        zMin: -26, zMax: -18,
+        xMin: 4, xMax: 15,     // Extended to include waypoint at x=5
+        zMin: -24, zMax: -20,  // Extended to include waypoint at z=-22
         icon: '🏛️',
         title: 'ORGANIZATIONS',
         items: [
@@ -82,7 +84,8 @@ const ZONES = {
         ]
     },
     roles: {
-        zMin: -36, zMax: -28,
+        xMin: -15, xMax: -4,   // Extended to include waypoint at x=-5
+        zMin: -34, zMax: -30,  // Extended to include waypoint at z=-32
         icon: '💼',
         title: 'MORE ROLES',
         items: [
@@ -90,7 +93,8 @@ const ZONES = {
         ]
     },
     activities: {
-        zMin: -46, zMax: -38,
+        xMin: 4, xMax: 15,     // Extended to include waypoint at x=5
+        zMin: -44, zMax: -40,  // Extended to include waypoint at z=-42
         icon: '⚡',
         title: 'ACTIVITIES',
         items: [
@@ -99,7 +103,8 @@ const ZONES = {
         ]
     },
     contact: {
-        zMin: -60, zMax: -50,
+        xMin: -5, xMax: 5,     // Center area, includes waypoint at x=0
+        zMin: -58, zMax: -53,  // Extended to include waypoint at z=-55
         icon: '📧',
         title: 'CONTACT',
         items: [
@@ -841,12 +846,15 @@ function hideInfoPanel() {
 }
 
 function checkZone() {
+    const x = camera.position.x;
     const z = camera.position.z;
     let newZone = null;
 
-    // Find which zone camera is in (with 0.5 buffer for debounce)
+    // Find which zone camera is in (check both X and Z bounds)
     for (const [name, zone] of Object.entries(ZONES)) {
-        if (z >= zone.zMin - 0.5 && z <= zone.zMax + 0.5) {
+        const inX = x >= zone.xMin && x <= zone.xMax;
+        const inZ = z >= zone.zMin && z <= zone.zMax;
+        if (inX && inZ) {
             newZone = name;
             break;
         }
@@ -1004,6 +1012,9 @@ function teleportTo(waypointName) {
     state.isTeleporting = true;
     state.teleportProgress = 0;
 
+    // Store target zone for showing info panel when teleport completes
+    state.teleportTargetZone = ZONES[waypointName] ? waypointName : null;
+
     // Stop any current movement
     state.velocity.set(0, 0, 0);
     state.move.forward = false;
@@ -1063,6 +1074,13 @@ function animate() {
             camera.position.copy(state.teleportTarget.pos);
             state.yaw = state.teleportTarget.yaw;
             state.pitch = state.teleportTarget.pitch;
+
+            // Show info panel if teleported to a zone waypoint
+            if (state.teleportTargetZone) {
+                state.currentZone = state.teleportTargetZone;
+                showInfoPanel(state.teleportTargetZone);
+                state.teleportTargetZone = null;
+            }
         }
     }
 
