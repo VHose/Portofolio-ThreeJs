@@ -802,12 +802,64 @@ function createLectern(x, z, side = 'center') {
     surface.rotation.x = -Math.PI / 6;
     group.add(surface);
 
-    // Info marker (glowing orb)
-    const orbGeo = new THREE.SphereGeometry(0.08, 16, 16);
-    const orbMat = new THREE.MeshBasicMaterial({ color: 0xFFD887 });
-    const orb = new THREE.Mesh(orbGeo, orbMat);
-    orb.position.set(0, 1.2, 0);
-    group.add(orb);
+    // Open Book (Dark cover, open pages, bookmark)
+    const bookGroup = new THREE.Group();
+
+    // Dimensions
+    const bookWidth = 0.4;   // Total width when open
+    const bookDepth = 0.3;
+    const coverThickness = 0.005;
+    const pageThickness = 0.03;
+
+    // Materials
+    const coverColor = 0x3E2723; // Dark Brown
+    const pageColor = 0xFFFDD0;  // Cream / Paper white
+    const bookmarkColor = 0x8B0000; // Dark Red
+
+    const coverMat = new THREE.MeshStandardMaterial({ color: coverColor, roughness: 0.6 });
+    const pageMat = new THREE.MeshStandardMaterial({ color: pageColor, roughness: 0.8 });
+    const bookmarkMat = new THREE.MeshStandardMaterial({ color: bookmarkColor, roughness: 0.4 });
+
+    // Left Cover
+    const leftCover = new THREE.Mesh(new THREE.BoxGeometry(bookWidth / 2, coverThickness, bookDepth), coverMat);
+    leftCover.position.set(-bookWidth / 4, 0, 0);
+    leftCover.rotation.z = 0.1; // Slight angle
+    bookGroup.add(leftCover);
+
+    // Right Cover
+    const rightCover = new THREE.Mesh(new THREE.BoxGeometry(bookWidth / 2, coverThickness, bookDepth), coverMat);
+    rightCover.position.set(bookWidth / 4, 0, 0);
+    rightCover.rotation.z = -0.1; // Slight angle
+    bookGroup.add(rightCover);
+
+    // Left Pages
+    const leftPages = new THREE.Mesh(new THREE.BoxGeometry(bookWidth / 2 - 0.02, pageThickness, bookDepth - 0.02), pageMat);
+    leftPages.position.set(-bookWidth / 4 + 0.005, coverThickness / 2 + pageThickness / 2, 0);
+    leftPages.rotation.z = 0.1;
+    bookGroup.add(leftPages);
+
+    // Right Pages
+    const rightPages = new THREE.Mesh(new THREE.BoxGeometry(bookWidth / 2 - 0.02, pageThickness, bookDepth - 0.02), pageMat);
+    rightPages.position.set(bookWidth / 4 - 0.005, coverThickness / 2 + pageThickness / 2, 0);
+    rightPages.rotation.z = -0.1;
+    bookGroup.add(rightPages);
+
+    // Spine (Center)
+    const spine = new THREE.Mesh(new THREE.BoxGeometry(0.04, coverThickness, bookDepth), coverMat);
+    spine.position.set(0, -0.01, 0);
+    bookGroup.add(spine);
+
+    // Bookmark (Ribbon)
+    const bookmark = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.002, bookDepth + 0.05), bookmarkMat);
+    bookmark.position.set(0, coverThickness + 0.002, 0);
+    bookGroup.add(bookmark);
+
+    // Attach to surface
+    bookGroup.position.set(0, 0.02, 0.05);
+    surface.add(bookGroup);
+
+    // Remove direct world positioning since it's child of surface
+    // orb positioning removed
 
     // Position based on side
     const xOffset = side === 'left' ? -CONFIG.room.width / 2 + 3 :
