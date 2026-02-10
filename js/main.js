@@ -310,68 +310,60 @@ function createSpotlight(targetX, targetZ, side) {
 }
 
 // ===== Texture Generators =====
-// Realistic Marble Floor Texture
-function createMarbleFloorTexture() {
+// Realistic Polished Wood Floor Texture
+function createWoodFloorTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    // Base cream color
-    ctx.fillStyle = '#F5F0E8';
+    // Base background
+    ctx.fillStyle = '#3E2723';
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Marble veins
-    ctx.strokeStyle = 'rgba(180, 170, 160, 0.4)';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 30; i++) {
+    const plankW = 128; // Wider planks
+    const plankH = 1024; // Full length strips (or long planks)
+
+    // Draw Wood Planks (Long strips style like in reference images)
+    for (let x = 0; x < 1024; x += plankW) {
+        // Uniform Dark Brown (Chocolate/Coffee)
+        const hue = 25;
+        const sat = 35;
+        const lit = 22 + Math.random() * 4;
+
+        ctx.fillStyle = `hsl(${hue}, ${sat}%, ${lit}%)`;
+        ctx.fillRect(x, 0, plankW, 1024);
+
+        // Wood Grain (Wavy lines)
+        ctx.strokeStyle = `rgba(0,0,0,0.2)`;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        let x = Math.random() * 1024;
-        let y = Math.random() * 1024;
-        ctx.moveTo(x, y);
-        for (let j = 0; j < 8; j++) {
-            x += (Math.random() - 0.5) * 150;
-            y += (Math.random() - 0.5) * 150;
-            ctx.lineTo(x, y);
+        for (let y = 0; y < 1024; y += 20) {
+            let drift = (Math.random() - 0.5) * 10;
+            ctx.moveTo(x + 10 + drift, y);
+            ctx.lineTo(x + 10 + drift, y + 20);
+
+            let drift2 = (Math.random() - 0.5) * 10;
+            ctx.moveTo(x + plankW - 10 + drift2, y);
+            ctx.lineTo(x + plankW - 10 + drift2, y + 20);
         }
         ctx.stroke();
-    }
 
-    // Darker veins
-    ctx.strokeStyle = 'rgba(120, 110, 100, 0.3)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 20; i++) {
-        ctx.beginPath();
-        let x = Math.random() * 1024;
-        let y = Math.random() * 1024;
-        ctx.moveTo(x, y);
-        for (let j = 0; j < 5; j++) {
-            x += (Math.random() - 0.5) * 100;
-            y += (Math.random() - 0.5) * 100;
-            ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-    }
-
-    // Tile grid lines
-    ctx.strokeStyle = 'rgba(200, 190, 180, 0.5)';
-    ctx.lineWidth = 3;
-    const tileSize = 256;
-    for (let i = 0; i <= 4; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * tileSize, 0);
-        ctx.lineTo(i * tileSize, 1024);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, i * tileSize);
-        ctx.lineTo(1024, i * tileSize);
-        ctx.stroke();
+        // Plank Gap
+        ctx.strokeStyle = '#1A0F0A'; // Very dark gap
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, 0, plankW, 1024);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(CONFIG.room.width / 8, CONFIG.room.length / 8);
+    // Repeat texture
+    texture.repeat.set(CONFIG.room.width / 5, CONFIG.room.length / 5);
+    // Anisotropy for sharp texture at angle
+    if (renderer.capabilities.getMaxAnisotropy) {
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    }
     return texture;
 }
 
@@ -406,12 +398,12 @@ function createRoom() {
     const { width, height, length } = CONFIG.room;
     const halfW = width / 2;
 
-    // Marble Floor - Shiny/Reflective
+    // Wood Floor - Polished
     const floorGeo = new THREE.PlaneGeometry(width, length);
     const floorMat = new THREE.MeshStandardMaterial({
-        map: createMarbleFloorTexture(),
-        roughness: 0.15,  // Lower = shinier
-        metalness: 0.3    // Higher = more reflective
+        map: createWoodFloorTexture(),
+        roughness: 0.2,   // Polished wood
+        metalness: 0.1    // Slight reflection
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -567,7 +559,7 @@ function createRoom() {
     scene.add(welcomeMat);
 
     // Baseboards - All 4 walls
-    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x8B7355 });
+    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A });
 
     // Left & Right baseboards (along length)
     const skirtGeoLR = new THREE.BoxGeometry(length, 0.15, 0.08);
@@ -620,6 +612,30 @@ function createRoom() {
     const backCornice = new THREE.Mesh(endCorniceGeo, corniceMat);
     backCornice.position.set(0, height - corniceH / 2, -length + corniceD / 2);
     scene.add(backCornice);
+
+    // ===== Vertical Corner Trims (Pillars) =====
+    const cornerW = 0.25; // Width of the vertical line
+    const cornerGeo = new THREE.BoxGeometry(cornerW, height, cornerW);
+
+    // Front Left Corner
+    const flTrim = new THREE.Mesh(cornerGeo, corniceMat);
+    flTrim.position.set(-halfW + cornerW / 2, height / 2, -cornerW / 2);
+    scene.add(flTrim);
+
+    // Front Right Corner
+    const frTrim = new THREE.Mesh(cornerGeo, corniceMat);
+    frTrim.position.set(halfW - cornerW / 2, height / 2, -cornerW / 2);
+    scene.add(frTrim);
+
+    // Back Left Corner
+    const blTrim = new THREE.Mesh(cornerGeo, corniceMat);
+    blTrim.position.set(-halfW + cornerW / 2, height / 2, -length + cornerW / 2);
+    scene.add(blTrim);
+
+    // Back Right Corner
+    const brTrim = new THREE.Mesh(cornerGeo, corniceMat);
+    brTrim.position.set(halfW - cornerW / 2, height / 2, -length + cornerW / 2);
+    scene.add(brTrim);
 
     // ===== Ceiling Structure (Beams/Arches) =====
     // [USER] ATUR GENTENG/ATAP DISINI (Jarak, Ketebalan, Rotasi)
