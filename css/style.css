@@ -152,7 +152,7 @@ h1 {
 /* ===== Waypoint Navigation (Hamburger Menu) ===== */
 #waypoint-nav {
     position: absolute;
-    bottom: 40px;
+    top: 30px;
     right: 30px;
     pointer-events: auto;
 }
@@ -189,7 +189,7 @@ h1 {
 
 .waypoint-list {
     position: absolute;
-    bottom: 60px;
+    top: 60px;
     right: 0;
     background: rgba(30, 30, 30, 0.95);
     backdrop-filter: blur(12px);
@@ -202,7 +202,7 @@ h1 {
     flex-direction: column;
     gap: 6px;
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(-10px);
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
@@ -506,8 +506,9 @@ h1 {
 /* ===== Responsive Adjustments ===== */
 @media (max-width: 768px) {
     #waypoint-nav {
-        bottom: 20px;
+        top: 20px;
         right: 15px;
+        bottom: auto;
     }
 
     #nav-toggle {
