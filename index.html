@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap"
         rel="stylesheet">
 
     <link rel="stylesheet" href="css/style.css">
@@ -58,22 +58,26 @@
                 <span class="hamburger-icon">☰</span>
             </button>
             <div class="waypoint-list" id="waypoint-list">
-                <button class="waypoint-btn" data-waypoint="entrance">🚪 Entrance</button>
+                <button class="waypoint-btn" data-waypoint="entrance">👤 Me</button>
                 <button class="waypoint-btn" data-waypoint="academy">🎓 Academy</button>
                 <button class="waypoint-btn" data-waypoint="organizations">🏛️ Organizations</button>
                 <button class="waypoint-btn" data-waypoint="roles">💼 More Roles</button>
                 <button class="waypoint-btn" data-waypoint="activities">⚡ Activities</button>
+                <button class="waypoint-btn" data-waypoint="achievements">🏆 Achievements</button>
                 <button class="waypoint-btn" data-waypoint="contact">📧 Contact</button>
             </div>
         </div>
 
-        <!-- Info Panel (Left Side) - triggered by checkpoint zones -->
-        <div id="info-panel" class="hidden">
-            <div class="info-header">
-                <span class="info-icon"></span>
-                <span class="info-title"></span>
+        <!-- Unified Glassmorphism Panel (Dynamic Content) -->
+        <div id="info-panel" class="info-card hidden">
+            <div class="glass-header">
+                <span class="status-dot"></span>
+                <h3 class="panel-header-title">INFO</h3>
+                <button id="panel-toggle" class="panel-toggle" aria-label="Minimize panel">▾</button>
             </div>
-            <div class="info-content"></div>
+            <div class="glass-content" id="panel-content">
+                <!-- Content will be injected by JS -->
+            </div>
         </div>
     </div>
 

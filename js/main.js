@@ -23,7 +23,7 @@ const CONFIG = {
     room: {
         width: 30,
         height: 10,
-        length: 60
+        length: 100 // Extended length
     },
     nav: {
         moveSpeed: 0.005,
@@ -51,33 +51,35 @@ const state = {
 };
 
 // ===== Waypoint Definitions (facing walls directly) =====
+// ===== Waypoint Definitions (Spaced Out) =====
 const WAYPOINTS = {
-    entrance: { pos: new THREE.Vector3(13, 2, -5), yaw: Math.PI, pitch: 0.10 },
-    academy: { pos: new THREE.Vector3(-5, 2, -12), yaw: Math.PI / 2, pitch: 0.10 },      // Face left wall
-    organizations: { pos: new THREE.Vector3(5, 2, -22), yaw: -Math.PI / 2, pitch: 0.10 }, // Face right wall
-    roles: { pos: new THREE.Vector3(-5, 2, -32), yaw: Math.PI / 2, pitch: 0.10 },         // Face left wall
-    activities: { pos: new THREE.Vector3(5, 2, -42), yaw: -Math.PI / 2, pitch: 0.10 }, // Face right wall, look up
-    contact: { pos: new THREE.Vector3(0, 2, -55), yaw: 0, pitch: 0.50 }                // Face backward, look up slightly
+    entrance: { pos: new THREE.Vector3(0, 2, -12), yaw: Math.PI, pitch: 0.10 }, // About Me (Centered)
+    academy: { pos: new THREE.Vector3(-5, 2, -25), yaw: Math.PI / 2, pitch: 0.10 },
+    organizations: { pos: new THREE.Vector3(5, 2, -40), yaw: -Math.PI / 2, pitch: 0.10 },
+    roles: { pos: new THREE.Vector3(-5, 2, -55), yaw: Math.PI / 2, pitch: 0.10 },
+    activities: { pos: new THREE.Vector3(5, 2, -70), yaw: -Math.PI / 2, pitch: 0.10 },
+    achievements: { pos: new THREE.Vector3(6, 2, -85), yaw: -Math.PI / 2, pitch: 0.10 }, // New Location
+    contact: { pos: new THREE.Vector3(0, 2, -95), yaw: 0, pitch: 0.50 }
 };
 
-// ===== Trigger Zones Definition (includes waypoint teleport positions) =====
+// ===== Trigger Zones Definition (Spaced Out) =====
 const ZONES = {
     entrance: {
-        xMin: -5, xMax: 5,     // Center of room
-        zMin: -10, zMax: -1,    // Near front wall with Valentino Hose text
-        icon: '👋',
-        title: 'VALENTINO HOSE',
+        xMin: -5, xMax: 5,    // Centered Trigger Zone
+        zMin: -14, zMax: -6,  // Adjusted for new checkpoint
+        title: 'PROFESSIONAL PROFILE',
+        introName: 'Valentino Hose',
+        subtitle: 'Informatics Student & Web Developer',
         items: [
-            { title: 'Informatics Student', sub: 'Maranatha Christian Univ.', detail: 'Fresh Graduate 2028' },
-            { title: 'Email', sub: 'valentinohose@gmail.com', detail: '' },
-            { title: 'LinkedIn', sub: 'linkedin.com/in/valentinohose', detail: '' },
-            { title: 'GitHub', sub: 'github.com/VHose', detail: '' }
-        ]
+            { title: '✦ Web Development', sub: '', detail: '' },
+            { title: '✦ Analytical Problem Solving', sub: '', detail: '' },
+            { title: '✦ User Experience Design', sub: '', detail: '' }
+        ],
+        extraHtml: `<hr class="divider"><p class="award-text">Penerima <strong>The Dean's Most Outstanding List Award</strong> dari Universitas Kristen Maranatha periode 2024/2025.</p>`
     },
     academy: {
-        xMin: -15, xMax: -4,   // Extended to include waypoint at x=-5
-        zMin: -14, zMax: -10,  // Extended to include waypoint at z=-12
-        icon: '🎓',
+        xMin: -15, xMax: -4,
+        zMin: -28, zMax: -22,
         title: 'ACADEMY',
         items: [
             { title: 'Maranatha Christian University', sub: '2024 - Present', detail: 'S1 Teknik Informatika' },
@@ -85,9 +87,8 @@ const ZONES = {
         ]
     },
     organizations: {
-        xMin: 4, xMax: 15,     // Extended to include waypoint at x=5
-        zMin: -24, zMax: -20,  // Extended to include waypoint at z=-22
-        icon: '🏛️',
+        xMin: 4, xMax: 15,
+        zMin: -43, zMax: -37,
         title: 'ORGANIZATIONS',
         items: [
             { title: 'Ketua HMIF', sub: 'Himpunan Mahasiswa', detail: 'Leading Association' },
@@ -96,28 +97,34 @@ const ZONES = {
         ]
     },
     roles: {
-        xMin: -15, xMax: -4,   // Extended to include waypoint at x=-5
-        zMin: -34, zMax: -30,  // Extended to include waypoint at z=-32
-        icon: '💼',
+        xMin: -15, xMax: -4,
+        zMin: -58, zMax: -52,
         title: 'MORE ROLES',
         items: [
             { title: 'Kemitraan HMIF', sub: 'Active Staff', detail: 'Partnership Division' }
         ]
     },
     activities: {
-        xMin: 4, xMax: 15,     // Extended to include waypoint at x=5
-        zMin: -44, zMax: -40,  // Extended to include waypoint at z=-42
-        icon: '⚡',
+        xMin: 4, xMax: 15,
+        zMin: -73, zMax: -67,
         title: 'ACTIVITIES',
         items: [
             { title: 'Lab Staff GWM', sub: 'Internship', detail: 'Laboratory Assistant' },
             { title: 'Teaching Assistant', sub: 'Logika & Project Next', detail: 'Academic Mentor' }
         ]
     },
+    achievements: {
+        xMin: 4, xMax: 15, // Right side
+        zMin: -88, zMax: -82,
+        title: 'ACHIEVEMENTS',
+        items: [
+            { title: "The Dean's Most Outstanding List", sub: "2024/2025", detail: "Highest Academic Honor" }
+        ],
+        extraHtml: `<p class="award-text">Recognized for maintaining a perfect GPA and active participation in university development.</p>`
+    },
     contact: {
-        xMin: -5, xMax: 5,     // Center area, includes waypoint at x=0
-        zMin: -58, zMax: -53,  // Extended to include waypoint at z=-55
-        icon: '📧',
+        xMin: -5, xMax: 5,
+        zMin: -98, zMax: -90,
         title: 'CONTACT',
         items: [
             { title: 'Email', sub: 'valentinohose@gmail.com', detail: 'Primary Contact' },
@@ -874,29 +881,294 @@ function createLectern(x, z, side = 'center') {
     return group;
 }
 
-// ===== Info Panel Functions =====
+// ===== Certificate Texture Generator =====
+function createCertificateTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 640;
+    const ctx = canvas.getContext('2d');
+
+    // Background - parchment/cream
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 640);
+    bgGrad.addColorStop(0, '#FFF9EE');
+    bgGrad.addColorStop(0.5, '#FFFDF5');
+    bgGrad.addColorStop(1, '#FFF6E0');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1024, 640);
+
+    // Outer gold border
+    ctx.strokeStyle = '#B8860B';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(20, 20, 984, 600);
+
+    // Inner border
+    ctx.strokeStyle = '#DAA520';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(35, 35, 954, 570);
+
+    // Decorative corner flourishes
+    ctx.strokeStyle = '#C5A55A';
+    ctx.lineWidth = 2;
+    const corners = [[40, 40], [984, 40], [40, 600], [984, 600]];
+    corners.forEach(([cx, cy]) => {
+        ctx.beginPath();
+        const dx = cx < 512 ? 1 : -1;
+        const dy = cy < 320 ? 1 : -1;
+        ctx.moveTo(cx, cy + dy * 40);
+        ctx.quadraticCurveTo(cx, cy, cx + dx * 40, cy);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + dy * 30);
+        ctx.quadraticCurveTo(cx + dx * 5, cy + dy * 5, cx + dx * 30, cy);
+        ctx.stroke();
+    });
+
+    // Top ornamental line
+    ctx.strokeStyle = '#C5A55A';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(200, 80);
+    ctx.lineTo(824, 80);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(250, 85);
+    ctx.lineTo(774, 85);
+    ctx.stroke();
+
+    // University crest area (small gold circle)
+    ctx.beginPath();
+    ctx.arc(512, 120, 25, 0, Math.PI * 2);
+    ctx.strokeStyle = '#B8860B';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#DAA520';
+    ctx.font = 'bold 20px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('✦', 512, 128);
+
+    // Main title
+    ctx.fillStyle = '#2C1810';
+    ctx.font = '600 28px "Georgia", serif';
+    ctx.textAlign = 'center';
+    ctx.fillText("THE DEAN'S MOST", 512, 190);
+    ctx.fillText('OUTSTANDING LIST AWARD', 512, 225);
+
+    // Decorative line under title
+    ctx.strokeStyle = '#B8860B';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(300, 245);
+    ctx.lineTo(724, 245);
+    ctx.stroke();
+
+    // "Awarded to" text
+    ctx.fillStyle = '#5C4A3A';
+    ctx.font = 'italic 18px "Georgia", serif';
+    ctx.fillText('This certificate is awarded to', 512, 290);
+
+    // Name
+    ctx.fillStyle = '#1A0F0A';
+    ctx.font = '700 42px "Georgia", serif';
+    ctx.fillText('Valentino Hose', 512, 350);
+
+    // Decorative line under name
+    ctx.strokeStyle = '#C5A55A';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(320, 370);
+    ctx.lineTo(704, 370);
+    ctx.stroke();
+
+    // Description
+    ctx.fillStyle = '#5C4A3A';
+    ctx.font = '16px "Georgia", serif';
+    ctx.fillText('For exceptional academic achievement', 512, 410);
+    ctx.fillText('in the Faculty of Information Technology', 512, 435);
+
+    // Institution
+    ctx.fillStyle = '#2C1810';
+    ctx.font = '600 18px "Georgia", serif';
+    ctx.fillText('Maranatha Christian University', 512, 480);
+
+    // Period
+    ctx.fillStyle = '#8B7355';
+    ctx.font = '15px "Georgia", serif';
+    ctx.fillText('Academic Year 2024/2025', 512, 510);
+
+    // Bottom ornamental line
+    ctx.strokeStyle = '#C5A55A';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(200, 550);
+    ctx.lineTo(824, 550);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(250, 555);
+    ctx.lineTo(774, 555);
+    ctx.stroke();
+
+    // Gold seal (bottom center)
+    ctx.beginPath();
+    ctx.arc(512, 575, 18, 0, Math.PI * 2);
+    ctx.fillStyle = '#DAA520';
+    ctx.fill();
+    ctx.strokeStyle = '#B8860B';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#FFF9EE';
+    ctx.font = 'bold 14px serif';
+    ctx.fillText('★', 512, 581);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// ===== Certificate Frame (Positionable) =====
+function createCertificateFrame(x, y, z, rotationY) {
+    const group = new THREE.Group();
+    const certWidth = 5.0;
+    const certHeight = 3.125; // keeping 1024:640 ratio
+
+    // Certificate canvas as texture
+    const certTexture = createCertificateTexture();
+    const certGeo = new THREE.PlaneGeometry(certWidth, certHeight);
+    const certMat = new THREE.MeshStandardMaterial({
+        map: certTexture,
+        roughness: 0.4,
+        metalness: 0.05
+    });
+    const certMesh = new THREE.Mesh(certGeo, certMat);
+    certMesh.position.z = 0.03;
+    group.add(certMesh);
+
+    // Premium wooden frame
+    const frameWidth = 0.18;
+    const frameDepth = 0.1;
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x3D2B1F, roughness: 0.3, metalness: 0.1 });
+
+    // Top frame
+    const topF = new THREE.Mesh(new THREE.BoxGeometry(certWidth + frameWidth * 2, frameWidth, frameDepth), frameMat);
+    topF.position.y = certHeight / 2 + frameWidth / 2;
+    group.add(topF);
+    // Bottom frame
+    const botF = new THREE.Mesh(new THREE.BoxGeometry(certWidth + frameWidth * 2, frameWidth, frameDepth), frameMat);
+    botF.position.y = -certHeight / 2 - frameWidth / 2;
+    group.add(botF);
+    // Left frame
+    const leftF = new THREE.Mesh(new THREE.BoxGeometry(frameWidth, certHeight + frameWidth * 2, frameDepth), frameMat);
+    leftF.position.x = -certWidth / 2 - frameWidth / 2;
+    group.add(leftF);
+    // Right frame
+    const rightF = new THREE.Mesh(new THREE.BoxGeometry(frameWidth, certHeight + frameWidth * 2, frameDepth), frameMat);
+    rightF.position.x = certWidth / 2 + frameWidth / 2;
+    group.add(rightF);
+
+    // Inner gold trim
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0xDAA520, metalness: 0.6, roughness: 0.3 });
+    const trimW = 0.04;
+    const tTop = new THREE.Mesh(new THREE.BoxGeometry(certWidth, trimW, frameDepth + 0.01), trimMat);
+    tTop.position.set(0, certHeight / 2 - trimW / 2, 0.01);
+    group.add(tTop);
+    const tBot = new THREE.Mesh(new THREE.BoxGeometry(certWidth, trimW, frameDepth + 0.01), trimMat);
+    tBot.position.set(0, -certHeight / 2 + trimW / 2, 0.01);
+    group.add(tBot);
+    const tLeft = new THREE.Mesh(new THREE.BoxGeometry(trimW, certHeight, frameDepth + 0.01), trimMat);
+    tLeft.position.set(-certWidth / 2 + trimW / 2, 0, 0.01);
+    group.add(tLeft);
+    const tRight = new THREE.Mesh(new THREE.BoxGeometry(trimW, certHeight, frameDepth + 0.01), trimMat);
+    tRight.position.set(certWidth / 2 - trimW / 2, 0, 0.01);
+    group.add(tRight);
+
+    // Wall label under certificate
+    const label = createText('Dean\'s Most Outstanding List Award — 2024/2025', {
+        fontSize: 0.18,
+        color: 0x887355,
+        anchorX: 'center'
+    });
+    if (label) {
+        label.position.set(0, -certHeight / 2 - 0.6, 0.02);
+        group.add(label);
+    }
+
+    // Apply Position and Rotation
+    group.position.set(x, y, z);
+    group.rotation.y = rotationY;
+
+    scene.add(group);
+
+    // Prestige spotlight for certificate
+    // Calculate spotlight position in front of the certificate based on rotation
+    const dist = 3.0; // distance from wall
+    const spotlightX = x + Math.sin(rotationY) * dist;
+    const spotlightZ = z + Math.cos(rotationY) * dist;
+
+    const certSpotlight = new THREE.SpotLight(0xFFF8DC, 3.0, 20, Math.PI / 6, 0.6, 1);
+    certSpotlight.position.set(spotlightX, CONFIG.room.height - 0.5, spotlightZ);
+
+    const certTarget = new THREE.Object3D();
+    certTarget.position.set(x, y, z); // Target the center of frame
+    scene.add(certTarget);
+    certSpotlight.target = certTarget;
+    certSpotlight.castShadow = true;
+    scene.add(certSpotlight);
+
+    return group;
+}
+
+// ===== Unified Info Panel Logic =====
 const infoPanel = document.getElementById('info-panel');
-const infoIcon = document.querySelector('.info-icon');
-const infoTitle = document.querySelector('.info-title');
-const infoContent = document.querySelector('.info-content');
+const panelContent = document.getElementById('panel-content');
+const toggleBtn = document.getElementById('panel-toggle');
+
+if (toggleBtn && infoPanel) {
+    toggleBtn.addEventListener('click', (e) => {
+        infoPanel.classList.toggle('minimized');
+        e.stopPropagation();
+    });
+}
 
 function showInfoPanel(zoneName) {
     const zone = ZONES[zoneName];
-    if (!zone || !infoPanel) return;
+    if (!zone || !infoPanel || !panelContent) return;
 
-    // Update content
-    if (infoIcon) infoIcon.textContent = zone.icon;
-    if (infoTitle) infoTitle.textContent = zone.title;
+    // Generate HTML based on zone data
+    let html = '';
 
-    if (infoContent) {
-        infoContent.innerHTML = zone.items.map(item => `
-            <div class="info-item">
-                <div class="info-item-title">${item.title}</div>
-                <div class="info-item-sub">${item.sub}</div>
-                ${item.detail ? `<div class="info-item-detail">${item.detail}</div>` : ''}
-            </div>
-        `).join('');
+    // Header / Title for the page content
+    if (zone.introName) {
+        html += `<h2 class="profile-name">${zone.introName}</h2>`;
+    } else if (zone.title) {
+        html += `<h2 class="panel-title-large">${zone.title}</h2>`;
     }
+
+    // Subtitle
+    if (zone.subtitle) {
+        html += `<p class="role-tag">${zone.subtitle}</p>`;
+    }
+
+    // Divider
+    html += `<hr class="divider">`;
+
+    // Extra HTML (like award text)
+    if (zone.extraHtml) {
+        html += zone.extraHtml;
+    }
+
+    // List Items
+    if (zone.items && zone.items.length > 0) {
+        html += `<ul class="skills-list">`;
+        zone.items.forEach(item => {
+            html += `<li>
+                <div class="info-item-title">${item.title}</div>
+                ${item.sub ? `<div class="info-item-sub">${item.sub}</div>` : ''}
+                ${item.detail ? `<div class="info-item-detail">${item.detail}</div>` : ''}
+            </li>`;
+        });
+        html += `</ul>`;
+    }
+
+    panelContent.innerHTML = html;
 
     // Show panel
     infoPanel.classList.remove('hidden');
@@ -904,9 +1176,10 @@ function showInfoPanel(zoneName) {
 }
 
 function hideInfoPanel() {
-    if (!infoPanel) return;
-    infoPanel.classList.remove('visible');
-    infoPanel.classList.add('hidden');
+    if (infoPanel) {
+        infoPanel.classList.remove('visible');
+        infoPanel.classList.add('hidden');
+    }
 }
 
 function checkZone() {
@@ -939,56 +1212,87 @@ function checkZone() {
 function buildScene() {
     createRoom();
 
+    // ===== Front Wall: "The Scholarly Gallery" =====
     const introGroup = new THREE.Group();
-    introGroup.position.set(0, 6, -0.1); // Moved higher
+    introGroup.position.set(0, 7.5, -0.1);
     introGroup.rotation.y = Math.PI;
-    // NO FRAME - just text on wall
-    const nameText = createText("VALENTINO HOSE", { fontSize: 0.8, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (nameText) { nameText.position.y = 0.5; introGroup.add(nameText); }
-    const jobText = createText("Informatics Engineering Student", { fontSize: 0.3, color: CONFIG.colors.accent, anchorX: 'center' });
-    if (jobText) { jobText.position.y = -0.5; introGroup.add(jobText); }
+
+    // "ABOUT ME" title
+    const nameText = createText("ABOUT ME", { fontSize: 1.0, color: 0x222222, anchorX: 'center' });
+    if (nameText) { nameText.position.y = 0.3; introGroup.add(nameText); }
+
+    // Subtitles
+    const jobText = createText("Valentino Hose", { fontSize: 0.4, color: CONFIG.colors.accent, anchorX: 'center' });
+    if (jobText) { jobText.position.y = -0.8; introGroup.add(jobText); }
+
+    const roleText = createText("Informatics Student & Web Developer", { fontSize: 0.18, color: 0x887355, anchorX: 'center' });
+    if (roleText) { roleText.position.y = -1.2; introGroup.add(roleText); }
+
     scene.add(introGroup);
 
-    createWallFrame('left', -12, "ACADEMY", [
+    // ===== Side Walls Content (Spaced Out) =====
+    // Academy (-25)
+    createWallFrame('left', -25, "ACADEMY", [
         { title: "Maranatha Christian Univ.", sub: "2024 - Present", detail: "S1 Teknik Informatika" },
         { title: "SMAK Kalam Kudus", sub: "2021 - 2024", detail: "Science Major" }
     ]);
 
-    createWallFrame('right', -22, "ORGANIZATIONS", [
+    // Organizations (-40)
+    createWallFrame('right', -40, "ORGANIZATIONS", [
         { title: "Ketua HMIF", sub: "Himpunan Mahasiswa", detail: "Leading Association" },
         { title: "Google Ambassador", sub: "2025 - 2026", detail: "Campus Tech Rep" },
         { title: "UKOR Free Fire", sub: "Cabinet Member", detail: "Esports Community" }
     ]);
 
-    createWallFrame('left', -32, "MORE ROLES", [
+    // Roles (-55)
+    createWallFrame('left', -55, "MORE ROLES", [
         { title: "Kemitraan HMIF", sub: "Active Staff", detail: "Partnership Division" },
     ]);
 
-    createWallFrame('right', -42, "ACTIVITIES", [
+    // Activities (-70)
+    createWallFrame('right', -70, "ACTIVITIES", [
         { title: "Lab Staff GWM", sub: "Internship", detail: "Laboratory Assistant" },
         { title: "Teaching Assistant", sub: "Logika & Project Next", detail: "Academic Mentor" }
     ]);
 
+    // Achievements (-85) - Right Side, near End
+    const performGroup = createWallFrame('right', -85, "ACHIEVEMENTS", []); // Just Header
+    // Certificate Frame
+    const rightWallX = CONFIG.room.width / 2 - 0.15;
+    createCertificateFrame(rightWallX, 3.8, -85, -Math.PI / 2);
+
+    // ===== Contact Section (-95+) =====
     const endZ = -CONFIG.room.length + 0.15;
     const contactHeader = createText("LET'S CONNECT", { fontSize: 0.5, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (contactHeader) { contactHeader.position.set(0, 7, endZ + 0.1); scene.add(contactHeader); } // Higher
+    if (contactHeader) { contactHeader.position.set(0, 7, endZ + 0.1); scene.add(contactHeader); }
 
     createIcon("email", "mailto:valentinohose@gmail.com", new THREE.Vector3(-2.5, 5, endZ), 0);
     createIcon("linkedin", "https://linkedin.com/in/valentinohose", new THREE.Vector3(-0.8, 5, endZ), 0);
     createIcon("github", "https://github.com/VHose", new THREE.Vector3(0.8, 5, endZ), 0);
     createIcon("instagram", "https://instagram.com/legaseeh", new THREE.Vector3(2.5, 5, endZ), 0);
 
-    // Add chandeliers along the gallery ceiling
-    createChandelier(0, -10);   // Near entrance
-    createChandelier(0, -25);   // Middle section 1
-    createChandelier(0, -40);   // Middle section 2
-    createChandelier(0, -55);   // Near contact section
+    // Decor & Lighting at new intervals
+    const zPositions = [-25, -40, -55, -70, -85];
+    zPositions.forEach(z => {
+        if (z % 2 !== 0) createChandelier(0, z); // Chandeliers at -25, -55, -85? 
+    });
+    // Add specific chandeliers:
+    createChandelier(0, -25);
+    createChandelier(0, -55);
+    createChandelier(0, -85);
 
-    // Add lecterns (info stands) at each zone
-    createLectern(0, -12, 'left');   // Academy
-    createLectern(0, -22, 'right');  // Organizations
-    createLectern(0, -32, 'left');   // More Roles
-    createLectern(0, -42, 'right');  // Activities
+    // Lecterns
+    createLectern(0, -8, 'center');  // About Me (Centered) - Directly visible
+    createLectern(0, -25, 'left');   // Academy
+    createLectern(0, -40, 'right');  // Organizations
+    createLectern(0, -55, 'left');   // Roles
+    createLectern(0, -70, 'right');  // Activities
+    createLectern(0, -85, 'right');  // Achievements (New)
+
+    // Warm Lights
+    for (let z = -10; z > -100; z -= 15) {
+        addWarmLight(0, CONFIG.room.height - 0.5, z);
+    }
 
     const loaderEl = document.getElementById('loader');
     if (loaderEl) {

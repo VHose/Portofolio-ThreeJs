@@ -237,7 +237,7 @@ h1 {
 }
 
 /* ===== Info Panel (Left Side) ===== */
-#info-panel {
+#info-panel-deprecated {
     position: absolute;
     left: 30px;
     top: 50%;
@@ -254,12 +254,12 @@ h1 {
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-#info-panel.visible {
+#info-panel-deprecated.visible {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
 }
 
-#info-panel.hidden {
+#info-panel-deprecated.hidden {
     opacity: 0;
     transform: translateY(-50%) translateX(-20px);
     pointer-events: none;
@@ -316,6 +316,193 @@ h1 {
     font-weight: 500;
 }
 
+/* ===== INFO PANEL (Unified Glassmorphism) ===== */
+#info-panel {
+    position: absolute;
+    left: 40px;
+    top: 50%;
+    transform: translateY(-50%) translateX(-40px);
+    width: 320px;
+    background: rgba(30, 30, 30, 0.6);
+    /* Darker, more opaque background for contrast */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 215, 135, 0.3);
+    /* Goldish border */
+    border-radius: 15px;
+    color: #F5F5F5;
+    /* Off-white instead of pure white */
+    font-family: 'Inter', sans-serif;
+    z-index: 1000;
+    pointer-events: auto;
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    /* For minimizing */
+    height: auto;
+    max-height: 80vh;
+}
+
+#info-panel.visible {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+#info-panel.hidden {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-40px);
+    pointer-events: none;
+}
+
+#info-panel.minimized {
+    width: 220px;
+    transform: translateY(0) translateX(0);
+    top: auto;
+    bottom: 40px;
+}
+
+#info-panel.minimized .glass-content {
+    display: none;
+}
+
+#info-panel.minimized .glass-header {
+    border-bottom: none;
+}
+
+#info-panel.minimized .panel-toggle {
+    transform: rotate(180deg);
+}
+
+.glass-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* To push button to right */
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.glass-header h3 {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: #FFD887;
+    /* Gold accent */
+    font-family: 'Inter', sans-serif;
+}
+
+.panel-toggle {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.panel-toggle:hover {
+    color: #FFD887;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background: #FFD887;
+    /* Gold dot */
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(255, 216, 135, 0.6);
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+
+    0%,
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 8px rgba(255, 216, 135, 0.6);
+    }
+
+    50% {
+        opacity: 0.5;
+        box-shadow: 0 0 4px rgba(255, 216, 135, 0.3);
+    }
+}
+
+.glass-content {
+    padding: 20px;
+    transition: opacity 0.3s ease;
+}
+
+.profile-name {
+    margin: 0 0 4px 0;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #FFE4B5;
+    /* Moccasin/Cream for better readability */
+    letter-spacing: 0.5px;
+}
+
+.role-tag {
+    color: rgba(255, 255, 255, 0.8);
+    /* More visible than 0.6 */
+    font-size: 0.85rem;
+    margin: 0 0 15px 0;
+    font-weight: 400;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 0 0 15px 0;
+}
+
+.award-text {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #E0E0E0;
+    /* Light gray for body text */
+    margin: 0 0 18px 0;
+}
+
+.award-text strong {
+    color: #FFD887;
+    font-weight: 600;
+}
+
+.skills-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.skills-list li {
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    color: #E0E0E0;
+    /* Light gray */
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: color 0.2s ease, padding-left 0.2s ease;
+}
+
+.skills-list li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.skills-list li:hover {
+    color: #FFD887;
+    padding-left: 4px;
+}
+
 /* ===== Responsive Adjustments ===== */
 @media (max-width: 768px) {
     #waypoint-nav {
@@ -345,5 +532,23 @@ h1 {
 
     .info-item-title {
         font-size: 0.85rem;
+    }
+
+    #info-panel {
+        left: 15px;
+        width: 260px;
+    }
+
+    .profile-name {
+        font-size: 1.3rem;
+    }
+
+    .glass-content {
+        padding: 15px;
+    }
+
+    #info-panel.minimized {
+        width: 180px;
+        bottom: 20px;
     }
 }
