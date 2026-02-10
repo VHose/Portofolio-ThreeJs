@@ -10,13 +10,13 @@ import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 // ===== Configuration =====
 const CONFIG = {
     colors: {
-        background: 0x1A1A1A, // Dark exterior
+        background: 0xF5F5F5, // Bright exterior/fog (was Dark)
         wall: 0xFFFFFF,       // White walls
-        frame: 0x3D2B1F,
-        frameBack: 0xFFFDF8,
-        textHeader: 0x1A1A1A,
-        textBody: 0x1A1A1A,
-        accent: 0xFFD887,
+        frame: 0x2C1810,
+        frameBack: 0xFFFAF0,
+        textHeader: 0x111111, // Very Dark / Black
+        textBody: 0x333333,   // Dark Gray
+        accent: 0xB8860B,     // Darker Gold for contrast
         warmLight: 0xFFFFFF,
         iconHover: 0xE07B39
     },
@@ -50,7 +50,6 @@ const state = {
     currentZone: null
 };
 
-// ===== Waypoint Definitions (facing walls directly) =====
 // ===== Waypoint Definitions (Spaced Out) =====
 const WAYPOINTS = {
     entrance: { pos: new THREE.Vector3(0, 2, -12), yaw: Math.PI, pitch: 0.10 }, // About Me (Centered)
@@ -146,6 +145,7 @@ camera.position.set(13, 2, -5);
 camera.rotation.y = Math.PI;
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap at 2x for performance
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -154,10 +154,10 @@ const raycaster = new THREE.Raycaster();
 const clickableObjects = [];
 
 // ===== Brighter Lighting =====
-const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1.2);  // Increased
+const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1.5);  // Increased intensity
 scene.add(ambientLight);
 
-const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFF, 0.8);  // Brighter
+const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFF, 1.0);  // High brightness
 hemiLight.position.set(0, 20, 0);
 scene.add(hemiLight);
 
@@ -487,7 +487,7 @@ function createRoom() {
     // Part of right wall BEFORE the door (from z=0 to doorZ)
     const rightBeforeDoorLen = Math.abs(doorZ) - doorWidth / 2;
     const rightWallBeforeGeo = new THREE.PlaneGeometry(rightBeforeDoorLen, height);
-    const rightWallBefore = new THREE.Mesh(rightWallBeforeGeo, wallMat.clone());
+    const rightWallBefore = new THREE.Mesh(rightWallBeforeGeo, wallMat);
     rightWallBefore.rotation.y = -Math.PI / 2;
     rightWallBefore.position.set(halfW, height / 2, -rightBeforeDoorLen / 2);
     scene.add(rightWallBefore);
@@ -495,27 +495,27 @@ function createRoom() {
     // Part of right wall AFTER the door (from doorZ+doorWidth to end)
     const rightAfterDoorLen = length - Math.abs(doorZ) - doorWidth / 2;
     const rightWallAfterGeo = new THREE.PlaneGeometry(rightAfterDoorLen, height);
-    const rightWallAfter = new THREE.Mesh(rightWallAfterGeo, wallMat.clone());
+    const rightWallAfter = new THREE.Mesh(rightWallAfterGeo, wallMat);
     rightWallAfter.rotation.y = -Math.PI / 2;
     rightWallAfter.position.set(halfW, height / 2, -(Math.abs(doorZ) + doorWidth / 2 + rightAfterDoorLen / 2));
     scene.add(rightWallAfter);
 
     // Part of right wall ABOVE the door
     const rightAboveDoorGeo = new THREE.PlaneGeometry(doorWidth, height - doorHeight);
-    const rightAboveDoor = new THREE.Mesh(rightAboveDoorGeo, wallMat.clone());
+    const rightAboveDoor = new THREE.Mesh(rightAboveDoorGeo, wallMat);
     rightAboveDoor.rotation.y = -Math.PI / 2;
     rightAboveDoor.position.set(halfW, height - (height - doorHeight) / 2, doorZ);
     scene.add(rightAboveDoor);
 
     // Back Wall
     const backWallGeo = new THREE.PlaneGeometry(width, height);
-    const backWall = new THREE.Mesh(backWallGeo, wallMat.clone());
+    const backWall = new THREE.Mesh(backWallGeo, wallMat);
     backWall.position.set(0, height / 2, -length);
     scene.add(backWall);
 
     // Front Wall (solid, no door)
     const frontWallGeo = new THREE.PlaneGeometry(width, height);
-    const frontWall = new THREE.Mesh(frontWallGeo, wallMat.clone());
+    const frontWall = new THREE.Mesh(frontWallGeo, wallMat);
     frontWall.rotation.y = Math.PI;
     frontWall.position.set(0, height / 2, 0);
     scene.add(frontWall);
@@ -593,10 +593,50 @@ function createRoom() {
     backSkirt.position.set(0, 0.075, -length + 0.04);
     scene.add(backSkirt);
 
-    addWarmLight(0, height - 0.5, -10);
-    addWarmLight(0, height - 0.5, -25);
-    addWarmLight(0, height - 0.5, -40);
-    addWarmLight(0, height - 0.5, -55);
+    // NOTE: Warm lights are added in buildScene loop — removed duplicates here
+
+    // ===== Top Trim (Cornice - "Garis Coklat Outline") =====
+    const corniceMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.8 });
+    const corniceH = 0.25;
+    const corniceD = 0.15;
+
+    // Left Cornice
+    const leftCornice = new THREE.Mesh(new THREE.BoxGeometry(length, corniceH, corniceD), corniceMat);
+    leftCornice.rotation.y = Math.PI / 2;
+    leftCornice.position.set(-halfW + corniceD / 2, height - corniceH / 2, -length / 2);
+    scene.add(leftCornice);
+
+    // Right Cornice
+    const rightCornice = new THREE.Mesh(new THREE.BoxGeometry(length, corniceH, corniceD), corniceMat);
+    rightCornice.rotation.y = -Math.PI / 2;
+    rightCornice.position.set(halfW - corniceD / 2, height - corniceH / 2, -length / 2);
+    scene.add(rightCornice);
+
+    // Front/Back Cornice
+    const endCorniceGeo = new THREE.BoxGeometry(width, corniceH, corniceD);
+    const frontCornice = new THREE.Mesh(endCorniceGeo, corniceMat);
+    frontCornice.position.set(0, height - corniceH / 2, -corniceD / 2);
+    scene.add(frontCornice);
+    const backCornice = new THREE.Mesh(endCorniceGeo, corniceMat);
+    backCornice.position.set(0, height - corniceH / 2, -length + corniceD / 2);
+    scene.add(backCornice);
+
+    // ===== Ceiling Structure (Beams/Arches) =====
+    // [USER] ATUR GENTENG/ATAP DISINI (Jarak, Ketebalan, Rotasi)
+    const archMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.5 });
+    // Same rotation logic as ceiling to match curve
+
+    // Create arches every 25 units (Reduced count for performance - "lebih dikit aja")
+    for (let z = -10; z > -length; z -= 25) {
+        // Reduced segments (6 radial, 30 tubular) for less lag
+        // Slightly shortened arc (Math.PI - 0.3) to prevent clipping into cornices ("nembus")
+        // Radius matches ceiling, thickness 0.12
+        const archGeo = new THREE.TorusGeometry(ceilingRadius - 0, 0.12, 20, 20, Math.PI - 0);
+        const arch = new THREE.Mesh(archGeo, archMat);
+        arch.position.set(0, height, z);
+
+        scene.add(arch);
+    }
 }
 
 // ===== Helpers (createText, createFramedPanel, createIcon, createWallFrame tetap sama) =====
@@ -739,9 +779,9 @@ function createWallFrame(side, zPos, title, items) {
     // NO FRAME - Clean text directly on wall
 
     // Header - Dark charcoal color, bold
-    const header = createText(title, { fontSize: 0.5, color: 0x222222, anchorX: 'center' });
+    const header = createText(title, { fontSize: 0.5, color: CONFIG.colors.textHeader, anchorX: 'center' });
     if (header) {
-        header.position.y = 1.5;
+        header.position.y = 1.6; // Slightly higher
         header.position.z = 0.02;
         group.add(header);
     }
@@ -751,8 +791,8 @@ function createWallFrame(side, zPos, title, items) {
     let itemNum = 1;
 
     items.forEach(item => {
-        // Item title - Brown color like in reference
-        const titleColor = 0x887355; // Soft brown
+        // Item title - Dark Brown for contrast
+        const titleColor = 0x3E2723; // Dark Brown
         const tMesh = createText(`${itemNum}. ${item.title}`, { fontSize: 0.22, color: titleColor, anchorX: 'center' });
         if (tMesh) {
             tMesh.position.y = yPos;
@@ -760,9 +800,9 @@ function createWallFrame(side, zPos, title, items) {
             group.add(tMesh);
         }
 
-        // Subtitle - Lighter brown/tan
+        // Subtitle - Medium Brown
         if (item.sub) {
-            const sMesh = createText(item.sub, { fontSize: 0.16, color: 0x8B7355, anchorX: 'center' });
+            const sMesh = createText(item.sub, { fontSize: 0.16, color: 0x5D4037, anchorX: 'center' });
             if (sMesh) {
                 sMesh.position.y = yPos - 0.28;
                 sMesh.position.z = 0.02;
@@ -770,9 +810,9 @@ function createWallFrame(side, zPos, title, items) {
             }
         }
 
-        // Detail - Warm accent color
+        // Detail - Dark Gold/Orange
         if (item.detail) {
-            const dMesh = createText(item.detail, { fontSize: 0.14, color: 0xFFD887, anchorX: 'center' });
+            const dMesh = createText(item.detail, { fontSize: 0.14, color: 0xB8860B, anchorX: 'center' });
             if (dMesh) {
                 dMesh.position.y = yPos - 0.52;
                 dMesh.position.z = 0.02;
@@ -789,43 +829,42 @@ function createWallFrame(side, zPos, title, items) {
 }
 
 // ===== Lectern (Info Stand) =====
+// Shared materials (created once, reused across all lecterns)
+const lecternWoodMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.6 });
+const lecternBronzeMat = new THREE.MeshStandardMaterial({ color: 0xB8860B, metalness: 0.7, roughness: 0.3 });
+const lecternCoverMat = new THREE.MeshStandardMaterial({ color: 0x3E2723, roughness: 0.6 });
+const lecternPageMat = new THREE.MeshStandardMaterial({ color: 0xFFFDD0, roughness: 0.8 });
+const lecternBookmarkMat = new THREE.MeshStandardMaterial({ color: 0x8B0000, roughness: 0.4 });
+
+// Shared geometries (created once, reused across all lecterns)
+const lecternPostGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.0, 8);
+const lecternSurfaceGeo = new THREE.BoxGeometry(0.5, 0.04, 0.4);
+
 function createLectern(x, z, side = 'center') {
     const group = new THREE.Group();
+    const woodMat = lecternWoodMat;
+    const bronzeMat = lecternBronzeMat;
 
-    // Materials
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.6 });
-    const bronzeMat = new THREE.MeshStandardMaterial({ color: 0xB8860B, metalness: 0.7, roughness: 0.3 });
-
-    // Base post
-    const postGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.0, 12);
-    const post = new THREE.Mesh(postGeo, woodMat);
+    // Base post (shared geometry)
+    const post = new THREE.Mesh(lecternPostGeo, woodMat);
     post.position.y = 0.5;
     group.add(post);
 
-    // Reading surface (angled)
-    const surfaceGeo = new THREE.BoxGeometry(0.5, 0.04, 0.4);
-    const surface = new THREE.Mesh(surfaceGeo, woodMat);
+    // Reading surface (shared geometry)
+    const surface = new THREE.Mesh(lecternSurfaceGeo, woodMat);
     surface.position.set(0, 1.05, 0.1);
     surface.rotation.x = -Math.PI / 6;
     group.add(surface);
 
-    // Open Book (Dark cover, open pages, bookmark)
+    // Open Book (shared materials)
     const bookGroup = new THREE.Group();
-
-    // Dimensions
-    const bookWidth = 0.4;   // Total width when open
+    const bookWidth = 0.4;
     const bookDepth = 0.3;
     const coverThickness = 0.005;
     const pageThickness = 0.03;
-
-    // Materials
-    const coverColor = 0x3E2723; // Dark Brown
-    const pageColor = 0xFFFDD0;  // Cream / Paper white
-    const bookmarkColor = 0x8B0000; // Dark Red
-
-    const coverMat = new THREE.MeshStandardMaterial({ color: coverColor, roughness: 0.6 });
-    const pageMat = new THREE.MeshStandardMaterial({ color: pageColor, roughness: 0.8 });
-    const bookmarkMat = new THREE.MeshStandardMaterial({ color: bookmarkColor, roughness: 0.4 });
+    const coverMat = lecternCoverMat;
+    const pageMat = lecternPageMat;
+    const bookmarkMat = lecternBookmarkMat;
 
     // Left Cover
     const leftCover = new THREE.Mesh(new THREE.BoxGeometry(bookWidth / 2, coverThickness, bookDepth), coverMat);
@@ -1218,14 +1257,14 @@ function buildScene() {
     introGroup.rotation.y = Math.PI;
 
     // "ABOUT ME" title
-    const nameText = createText("ABOUT ME", { fontSize: 1.0, color: 0x222222, anchorX: 'center' });
+    const nameText = createText("ABOUT ME", { fontSize: 1.0, color: CONFIG.colors.textHeader, anchorX: 'center' });
     if (nameText) { nameText.position.y = 0.3; introGroup.add(nameText); }
 
     // Subtitles
     const jobText = createText("Valentino Hose", { fontSize: 0.4, color: CONFIG.colors.accent, anchorX: 'center' });
     if (jobText) { jobText.position.y = -0.8; introGroup.add(jobText); }
 
-    const roleText = createText("Informatics Student & Web Developer", { fontSize: 0.18, color: 0x887355, anchorX: 'center' });
+    const roleText = createText("Informatics Student & Web Developer", { fontSize: 0.18, color: CONFIG.colors.textBody, anchorX: 'center' });
     if (roleText) { roleText.position.y = -1.2; introGroup.add(roleText); }
 
     scene.add(introGroup);
@@ -1271,12 +1310,7 @@ function buildScene() {
     createIcon("github", "https://github.com/VHose", new THREE.Vector3(0.8, 5, endZ), 0);
     createIcon("instagram", "https://instagram.com/legaseeh", new THREE.Vector3(2.5, 5, endZ), 0);
 
-    // Decor & Lighting at new intervals
-    const zPositions = [-25, -40, -55, -70, -85];
-    zPositions.forEach(z => {
-        if (z % 2 !== 0) createChandelier(0, z); // Chandeliers at -25, -55, -85? 
-    });
-    // Add specific chandeliers:
+    // Decor & Lighting — 3 chandeliers (no duplicates)
     createChandelier(0, -25);
     createChandelier(0, -55);
     createChandelier(0, -85);
@@ -1422,6 +1456,11 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Pre-allocated vectors for animate loop (avoid GC pressure)
+const _forward = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _yAxis = new THREE.Vector3(0, 1, 0);
+
 function animate() {
     requestAnimationFrame(animate);
 
@@ -1479,12 +1518,12 @@ function animate() {
 
     // Only process movement if not teleporting
     if (!state.isTeleporting) {
-        const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.yaw);
-        const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), state.yaw);
-        if (state.move.forward) state.velocity.add(forward.multiplyScalar(CONFIG.nav.moveSpeed));
-        if (state.move.backward) state.velocity.sub(forward.multiplyScalar(CONFIG.nav.moveSpeed));
-        if (state.move.left) state.velocity.sub(right.multiplyScalar(CONFIG.nav.moveSpeed));
-        if (state.move.right) state.velocity.add(right.multiplyScalar(CONFIG.nav.moveSpeed));
+        _forward.set(0, 0, -1).applyAxisAngle(_yAxis, state.yaw);
+        _right.set(1, 0, 0).applyAxisAngle(_yAxis, state.yaw);
+        if (state.move.forward) state.velocity.add(_forward.clone().multiplyScalar(CONFIG.nav.moveSpeed));
+        if (state.move.backward) state.velocity.sub(_forward.clone().multiplyScalar(CONFIG.nav.moveSpeed));
+        if (state.move.left) state.velocity.sub(_right.clone().multiplyScalar(CONFIG.nav.moveSpeed));
+        if (state.move.right) state.velocity.add(_right.clone().multiplyScalar(CONFIG.nav.moveSpeed));
         camera.position.add(state.velocity);
         state.velocity.multiplyScalar(CONFIG.nav.damping);
     }
