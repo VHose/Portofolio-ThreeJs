@@ -22,7 +22,7 @@ const CONFIG = {
     room: {
         width: 30,
         height: 10,
-        length: 120 // Extended for linear flow
+        length: 200 // Extended for spaced out layout
     },
     scroll: {
         damp: 0.08,
@@ -52,9 +52,10 @@ const ZONES = {
 const canvas = document.getElementById('three-canvas');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(CONFIG.colors.background);
-// NO FOG
+// Soft fog to blend the distance
+scene.fog = new THREE.Fog(CONFIG.colors.background, 10, 250);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 300);
 // Initial Position
 camera.position.set(0, 5.5, 8); // Start at user-defined limit
 camera.rotation.set(0, 0, 0);   // Facing Forward (towards negative Z)
@@ -86,6 +87,31 @@ function addWarmLight(x, y, z) {
     const light = new THREE.PointLight(0xFFFFFF, 1.0, 40);  // Brighter, longer range
     light.position.set(x, y, z);
     scene.add(light);
+}
+
+// ===== Environment: Grid Floor (Void) =====
+function createGridFloor() {
+    // 1. Grid Helper
+    const gridHelper = new THREE.GridHelper(200, 100, 0x00D4FF, 0x004466);
+    gridHelper.position.y = 0;
+    gridHelper.material.transparent = true;
+    gridHelper.material.opacity = 0.3;
+    scene.add(gridHelper);
+
+    // 2. Reflective Floor Plane (Glass-like)
+    const geometry = new THREE.PlaneGeometry(200, 200);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x000000,
+        roughness: 0.1,
+        metalness: 0.8,
+        transparent: true,
+        opacity: 0.8
+    });
+    const plane = new THREE.Mesh(geometry, material);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = -0.01;
+    plane.receiveShadow = true;
+    scene.add(plane);
 }
 
 // ===== Chandelier (Scaled Up) =====
@@ -636,19 +662,51 @@ function createIcon(type, url, position, rotation = 0) {
     group.rotation.y = rotation;
 
     // Icon size
-    const size = 0.8;
+    const size = 1.0; // Increased from 0.8
 
     // Frame background with visible border
-    const frame = createFramedPanel(1.0, 1.0);
-    frame.position.z = -0.05;
-    group.add(frame);
+    // Use a nicer frame (Gold/Bronze) for icons
+    const frameMat = new THREE.MeshStandardMaterial({
+        color: CONFIG.colors.accent, // Gold
+        roughness: 0.3,
+        metalness: 0.6
+    });
 
-    // Add outline/border around icon
-    const borderGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.1, 1.1, 0.02));
-    const borderMat = new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 2 });
-    const border = new THREE.LineSegments(borderGeo, borderMat);
-    border.position.z = 0.01;
-    group.add(border);
+    // Backing (white/cream)
+    // Scale backing up with size
+    const backingGeo = new THREE.BoxGeometry(size + 0.4, size + 0.4, 0.05);
+    const backingMat = new THREE.MeshStandardMaterial({ color: 0xFFFAF0 });
+    const backing = new THREE.Mesh(backingGeo, backingMat);
+    backing.position.z = -0.05;
+    group.add(backing);
+
+    // Border (Gold Frame)
+    // Scale border with size
+    const rimWidth = 0.1;
+    const rimDepth = 0.08;
+    // const halfSize = (size + 0.4)/2 + rimWidth/2;
+
+    // Top
+    const top = new THREE.Mesh(new THREE.BoxGeometry(size + 0.4 + rimWidth * 2, rimWidth, rimDepth), frameMat);
+    top.position.set(0, (size + 0.4) / 2 + rimWidth / 2, 0);
+    group.add(top);
+
+    // Bottom
+    const bot = new THREE.Mesh(new THREE.BoxGeometry(size + 0.4 + rimWidth * 2, rimWidth, rimDepth), frameMat);
+    bot.position.set(0, -((size + 0.4) / 2 + rimWidth / 2), 0);
+    group.add(bot);
+
+    // Left
+    const left = new THREE.Mesh(new THREE.BoxGeometry(rimWidth, size + 0.4, rimDepth), frameMat);
+    left.position.set(-((size + 0.4) / 2 + rimWidth / 2), 0, 0);
+    group.add(left);
+
+    // Right
+    const right = new THREE.Mesh(new THREE.BoxGeometry(rimWidth, size + 0.4, rimDepth), frameMat);
+    right.position.set((size + 0.4) / 2 + rimWidth / 2, 0, 0);
+    group.add(right);
+
+    // Removed the LineSegments (ugly wireframe)
 
     // Icon URLs from CDN (using Simple Icons or similar)
     const iconUrls = {
@@ -666,13 +724,31 @@ function createIcon(type, url, position, rotation = 0) {
     textureLoader.load(
         iconUrls[type],
         (texture) => {
+            // High quality filtering
+            texture.generateMipmaps = true;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+            // FIX: Correct Color Space for Vibrant, True Colors
+            try {
+                // Try modern property first
+                texture.colorSpace = THREE.SRGBColorSpace;
+            } catch (e) {
+                // Fallback for older Three.js
+                texture.encoding = 3001; // THREE.sRGBEncoding
+            }
+
             const iconMat = new THREE.MeshBasicMaterial({
                 map: texture,
                 transparent: true,
-                side: THREE.DoubleSide
+                // alphaTest: 0.5, // REMOVED: triggers jagged edges.
+                side: THREE.DoubleSide,
+                toneMapped: false, // Critical: Ignore scene lighting exposure
+                depthWrite: true   // Allow writing to depth buffer (might need false if transparency issues occur, but true is safer for single layer)
             });
             const iconMesh = new THREE.Mesh(iconGeo, iconMat);
-            iconMesh.position.z = 0.02;
+            iconMesh.position.z = 0.05; // More forward
             iconMesh.userData = { url: url, isInteractive: true, originalColor: 0xFFFFFF };
             group.add(iconMesh);
             clickableObjects.push(iconMesh);
@@ -1273,28 +1349,31 @@ function buildScene() {
         state.animatedObjects.push(group); // Track
     }
 
-    // ===== Section 2: EXPERIENCES (Z = -30) =====
-    // Floating Left & Right closer to center
+    // ===== Section 2: EXPERIENCES (Header -30, Content -42) =====
     const expZ = -30;
+    const expContentZ = -42; // Deeper
+
     const expHeader = createText("EXPERIENCES", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (expHeader) {
         expHeader.position.set(0, 7.5, expZ);
         scene.add(expHeader);
-        state.animatedObjects.push(expHeader); // Track header too
+        state.animatedObjects.push(expHeader);
     }
 
-    createFloatingPanel(-3.5, expZ, "WORK", [
+    createFloatingPanel(-3.5, expContentZ, "WORK", [
         { title: "Lab Staff GWM", sub: "Internship (2024)", detail: "" },
         { title: "Teaching Assistant", sub: "Logika & Project Next", detail: "" }
     ]);
 
-    createFloatingPanel(3.5, expZ, "ORGANIZATIONS", [
+    createFloatingPanel(3.5, expContentZ, "ORGANIZATIONS", [
         { title: "Ketua HMIF", sub: "Himpunan Mahasiswa", detail: "" },
         { title: "Google Ambassador", sub: "2025 - 2026", detail: "" }
     ]);
 
-    // ===== Section 3: PROJECTS (Z = -60) =====
-    const projZ = -60;
+    // ===== Section 3: PROJECTS (Header -70, Content -82) =====
+    const projZ = -70; // Moved further back
+    const projContentZ = -82;
+
     const projHeader = createText("PROJECTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (projHeader) {
         projHeader.position.set(0, 7.5, projZ);
@@ -1302,13 +1381,34 @@ function buildScene() {
         state.animatedObjects.push(projHeader);
     }
 
-    // Project Cards - Floating
-    createFloatingPanel(-4, projZ, "E-Commerce", [{ title: "Laravel Fullstack", sub: "Web App", detail: "" }]);
-    createFloatingPanel(0, projZ, "AI Chatbot", [{ title: "Python TensorFlow", sub: "Machine Learning", detail: "" }]);
-    createFloatingPanel(4, projZ, "3D Portfolio", [{ title: "Three.js", sub: "Interactive Web", detail: "" }]);
+    // Project 1
+    const p1 = createFramedPanel(3, 2);
+    p1.position.set(-4, 4, projContentZ);
+    scene.add(p1);
+    state.animatedObjects.push(p1);
+    const t1 = createText("AI AGENT", { fontSize: 0.4, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    if (t1) { t1.position.set(0, 0, 0.1); p1.add(t1); }
 
-    // ===== Section 4: ACHIEVEMENTS (Z = -90) =====
-    const achZ = -90;
+    // Project 2
+    const p2 = createFramedPanel(3, 2);
+    p2.position.set(0, 4, projContentZ);
+    scene.add(p2);
+    state.animatedObjects.push(p2);
+    const t2 = createText("3D WEBSITE", { fontSize: 0.4, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    if (t2) { t2.position.set(0, 0, 0.1); p2.add(t2); }
+
+    // Project 3
+    const p3 = createFramedPanel(3, 2);
+    p3.position.set(4, 4, projContentZ);
+    scene.add(p3);
+    state.animatedObjects.push(p3);
+    const t3 = createText("IOT SYSTEM", { fontSize: 0.4, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    if (t3) { t3.position.set(0, 0, 0.1); p3.add(t3); }
+
+    // ===== Section 4: ACHIEVEMENTS (Header -110, Content -122) =====
+    const achZ = -110;
+    const achContentZ = -122;
+
     const achHeader = createText("ACHIEVEMENTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (achHeader) {
         achHeader.position.set(0, 7.5, achZ);
@@ -1316,39 +1416,50 @@ function buildScene() {
         state.animatedObjects.push(achHeader);
     }
 
-    // Certificate (Floating) - Temporarily disabled
-    // const certGroup = new THREE.Group();
-    // certGroup.position.set(3, 4, achZ);
-    // createCertificateFrame(0, 0, 0, 0, certGroup); // Add to group, local coords
-    // scene.add(certGroup);
-    // state.animatedObjects.push(certGroup);
+    // Trophy / Models placeholders
+    const tGroup = new THREE.Group();
+    tGroup.position.set(0, 3, achContentZ);
 
-    createFloatingPanel(-3, achZ, "Dean's List", [
-        { title: "Most Outstanding", sub: "2024/2025", detail: "" }
-    ]);
+    // Golden Cube as placeholder trophy
+    const trophyGeo = new THREE.BoxGeometry(1, 1.5, 1);
+    const trophyMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 1.0, roughness: 0.2 });
+    const trophy = new THREE.Mesh(trophyGeo, trophyMat);
+    trophy.rotation.y = Math.PI / 4;
+    tGroup.add(trophy);
+
+    const tText = createText("1st Place Hackathon", { fontSize: 0.3, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    if (tText) { tText.position.set(0, -1.2, 0); tGroup.add(tText); }
+
+    scene.add(tGroup);
+    state.animatedObjects.push(tGroup);
 
 
-    // ===== Contact Section (End) =====
-    const endZ = -CONFIG.room.length + 5;
-    const contactHeader = createText("LET'S CONNECT", { fontSize: 0.6, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    // ===== Section 5: CONTACT (On the Wall at Z = -200) =====
+    const endZ = -198; // Just in front of the back wall (-200)
+
+    const contactHeader = createText("LET'S CONNECT", { fontSize: 0.8, color: CONFIG.colors.textHeader, anchorX: 'center' });
     if (contactHeader) {
-        contactHeader.position.set(0, 6, endZ);
+        contactHeader.position.set(0, 6.5, endZ); // slightly higher on wall
         scene.add(contactHeader);
         state.animatedObjects.push(contactHeader);
     }
 
-    // Floating Icons
-    const icon1 = createIcon("email", "mailto:valentinohose@gmail.com", new THREE.Vector3(-1.5, 4, endZ), 0);
-    const icon2 = createIcon("linkedin", "https://linkedin.com/in/valentinohose", new THREE.Vector3(-0.5, 4, endZ), 0);
-    const icon3 = createIcon("github", "https://github.com/VHose", new THREE.Vector3(0.5, 4, endZ), 0);
-    const icon4 = createIcon("instagram", "https://instagram.com/legaseeh", new THREE.Vector3(1.5, 4, endZ), 0);
+    // Floating Icons (Increased spacing)
+    // Spacing 1.8 units (was 1.0)
+    const icon1 = createIcon("email", "mailto:valentinohose@gmail.com", new THREE.Vector3(-2.7, 5, endZ), 0);
+    const icon2 = createIcon("linkedin", "https://linkedin.com/in/valentinohose", new THREE.Vector3(-0.9, 5, endZ), 0);
+    const icon3 = createIcon("github", "https://github.com/VHose", new THREE.Vector3(0.9, 5, endZ), 0);
+    const icon4 = createIcon("instagram", "https://instagram.com/legaseeh", new THREE.Vector3(2.7, 5, endZ), 0);
 
     state.animatedObjects.push(icon1, icon2, icon3, icon4);
 
-    // Decor & Lighting — 3 chandeliers (Restored)
-    createChandelier(0, -25);
-    createChandelier(0, -55);
-    createChandelier(0, -85);
+    // Decor & Lighting — 3 chandeliers (Restored - Spaced out)
+    // Adjust positions to match new length
+    createChandelier(0, -30);
+    createChandelier(0, -70);
+    createChandelier(0, -110);
+    createChandelier(0, -150);
+    createChandelier(0, -180);
 }
 
 // ===== Initial Load & Animate =====
@@ -1386,7 +1497,7 @@ loader.load('https://threejs.org/examples/fonts/optimer_bold.typeface.json', (fo
             clearInterval(finishInterval);
 
             // Warm Lights
-            for (let z = -10; z > -100; z -= 15) {
+            for (let z = -10; z > -200; z -= 15) {
                 addWarmLight(0, CONFIG.room.height - 0.5, z);
             }
 
@@ -1417,14 +1528,13 @@ document.querySelectorAll('#main-nav a').forEach(link => {
         e.preventDefault();
         const target = e.target.getAttribute('data-target');
         let zTarget = 0;
-        // Adjusted targets to have "jarak" (distance) from the content
-        // Content at: -30, -60, -90. Camera stops ~8 units before.
+        // Adjusted targets for new spacious layout
         switch (target) {
-            case 'entrance': zTarget = 8; break; // Start at 8
-            case 'experiences': zTarget = -22; break; // Content at -30
-            case 'projects': zTarget = -52; break; // Content at -60
-            case 'achievements': zTarget = -82; break; // Content at -90
-            case 'contact': zTarget = -105; break; // Content at end
+            case 'entrance': zTarget = 8; break;
+            case 'experiences': zTarget = -22; break;   // Header at -30, view from -22
+            case 'projects': zTarget = -62; break;      // Header at -70, view from -62
+            case 'achievements': zTarget = -102; break; // Header at -110, view from -102
+            case 'contact': zTarget = -185; break;      // End of room (View wall at -200)
         }
         state.scrollTarget = zTarget;
     });
@@ -1438,32 +1548,54 @@ function onWheel(event) {
     // Typically: Scroll Down -> Go Deeper into gallery (Negative Z)
 
     // speed factor
-    const speed = 0.01;
+    const speed = 0.015; // Slower scroll
     state.scrollTarget -= event.deltaY * speed;
 
     // Clamp scroll
-    // StartZ = 8 (User Defined)
-    // EndZ = -105 (Contact)
-    state.scrollTarget = Math.max(-105, Math.min(8, state.scrollTarget));
+    // StartZ = 8
+    // EndZ = -185 (Contact Wall View)
+    state.scrollTarget = Math.max(-185, Math.min(8, state.scrollTarget));
 }
 
 function onMouseMove(event) {
-    // Normalized mouse pos -1 to 1
+    // Normalize mouse pos (-1 to +1)
     state.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     state.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Parallax target
+    // Parallax Target (X moved slightly, Y moved slightly)
     state.parallax.x = state.mouse.x * CONFIG.scroll.parallax;
     state.parallax.y = state.mouse.y * CONFIG.scroll.parallax;
+
+    // Raycasting for Hover
+    raycaster.setFromCamera(state.mouse, camera);
+    const intersects = raycaster.intersectObjects(clickableObjects);
+
+    if (intersects.length > 0) {
+        document.body.style.cursor = 'pointer';
+        state.hoveredObject = intersects[0].object;
+    } else {
+        document.body.style.cursor = 'default';
+        state.hoveredObject = null;
+    }
 }
 
-window.addEventListener('wheel', onWheel);
-document.addEventListener('mousemove', onMouseMove);
+function onClick(event) {
+    if (state.hoveredObject && state.hoveredObject.userData.url) {
+        window.open(state.hoveredObject.userData.url, '_blank');
+    }
+}
+
+// Resizing
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// Listeners
+window.addEventListener('wheel', onWheel);
+window.addEventListener('mousemove', onMouseMove);
+window.addEventListener('click', onClick);
 
 // ===== Animate Loop =====
 function animate() {
@@ -1488,6 +1620,41 @@ function animate() {
     camera.rotation.y = -state.mouse.x * 0.05;
     camera.rotation.x = state.mouse.y * 0.05;
 
+    // 4. Fade In / Out Logic for Floating Objects
+    if (state.animatedObjects && state.animatedObjects.length > 0) {
+        state.animatedObjects.forEach(obj => {
+            if (!obj) return;
+            // Calculate distance along Z axis
+            const dist = Math.abs(camera.position.z - obj.position.z);
+
+            // Fade range: Start fading in at 25 units, fully visible at 15 units
+            let opacity = 0;
+            if (dist < 25) {
+                opacity = 1 - ((dist - 10) / 15); // Simple linear fade
+                opacity = Math.max(0, Math.min(1, opacity));
+            }
+
+            // Apply opacity to all child meshes
+            obj.traverse(child => {
+                if (child.isMesh) {
+                    // clone material if needed to avoid sharing issues (optional but safer)
+                    if (!child.userData.hasClonedMat) {
+                        child.material = child.material.clone();
+                        child.material.transparent = true;
+                        child.userData.hasClonedMat = true;
+                    }
+                    child.material.opacity = opacity;
+                    child.visible = opacity > 0.01;
+                }
+            });
+        });
+    }
+
+    // DEBUG: Update Z Position Display
+    const debugZ = document.getElementById('debug-z');
+    if (debugZ) {
+        debugZ.innerText = `Z: ${camera.position.z.toFixed(2)}`;
+    }
 
     renderer.render(scene, camera);
 }
