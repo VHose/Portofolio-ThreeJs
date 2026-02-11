@@ -153,8 +153,9 @@ h1 {
 /* Navbar Styles */
 #main-nav {
     position: absolute;
-    top: 30px;
-    right: 40px;
+    top: 40px;
+    right: 80px;
+    /* Moved further left to avoid overlapping */
     pointer-events: auto;
     z-index: 1000;
 }
