@@ -20,8 +20,8 @@
 <body>
     <div id="loader">
         <div class="loader-content">
-            <div class="spinner"></div>
-            <p>Loading 3D Assets...</p>
+            <div id="loader-percentage">0%</div>
+            <p>Loading Experience...</p>
         </div>
     </div>
 
@@ -31,37 +31,16 @@
         <!-- Music Player (Top Right) -->
 
 
-        <div class="controls-hint">
-            <div class="key-group">
-                <div class="keys">
-                    <span class="key">W</span>
-                    <span class="key">A</span>
-                    <span class="key">S</span>
-                    <span class="key">D</span>
-                </div>
-                <span>Move</span>
-            </div>
-            <div class="mouse-group">
-                <span class="mouse-icon">🖱️</span>
-                <span>Right Click + Drag to Look</span>
-            </div>
-        </div>
-
-        <!-- Waypoint Navigation Panel (Hamburger Menu) -->
-        <div id="waypoint-nav">
-            <button id="nav-toggle" aria-label="Toggle Navigation">
-                <span class="hamburger-icon">☰</span>
-            </button>
-            <div class="waypoint-list" id="waypoint-list">
-                <button class="waypoint-btn" data-waypoint="entrance">👤 Me</button>
-                <button class="waypoint-btn" data-waypoint="academy">🎓 Academy</button>
-                <button class="waypoint-btn" data-waypoint="organizations">🏛️ Organizations</button>
-                <button class="waypoint-btn" data-waypoint="roles">💼 More Roles</button>
-                <button class="waypoint-btn" data-waypoint="activities">⚡ Activities</button>
-                <button class="waypoint-btn" data-waypoint="achievements">🏆 Achievements</button>
-                <button class="waypoint-btn" data-waypoint="contact">📧 Contact</button>
-            </div>
-        </div>
+        <!-- Navbar (Top Right) -->
+        <nav id="main-nav">
+            <ul>
+                <li><a href="#" data-target="entrance">About Me</a></li>
+                <li><a href="#" data-target="experiences">Experiences</a></li>
+                <li><a href="#" data-target="projects">Projects</a></li>
+                <li><a href="#" data-target="achievements">Achievements</a></li>
+                <li><a href="#" data-target="contact">Contact</a></li>
+            </ul>
+        </nav>
 
         <!-- Unified Glassmorphism Panel (Dynamic Content) -->
         <div id="info-panel" class="info-card hidden">

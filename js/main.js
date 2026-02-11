@@ -10,142 +10,55 @@ import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 // ===== Configuration =====
 const CONFIG = {
     colors: {
-        background: 0xF5F5F5, // Bright exterior/fog (was Dark)
+        background: 0xF5F5F5, // Bright exterior
         wall: 0xFFFFFF,       // White walls
         frame: 0x2C1810,
         frameBack: 0xFFFAF0,
-        textHeader: 0x111111, // Very Dark / Black
+        textHeader: 0x111111, // Blacks
         textBody: 0x333333,   // Dark Gray
-        accent: 0xB8860B,     // Darker Gold for contrast
-        warmLight: 0xFFFFFF,
+        accent: 0xB8860B,     // Gold
         iconHover: 0xE07B39
     },
     room: {
         width: 30,
         height: 10,
-        length: 100 // Extended length
+        length: 120 // Extended for linear flow
     },
-    nav: {
-        moveSpeed: 0.005,
-        lookSpeed: 0.002,
-        damping: 0.9
+    scroll: {
+        damp: 0.08,
+        parallax: 0.5
     }
 };
 
 // ===== State =====
 const state = {
-    move: { forward: false, backward: false, left: false, right: false },
-    velocity: new THREE.Vector3(),
-    isDragging: false,
-    yaw: Math.PI,
-    pitch: 0,
+    scrollTarget: 0,
+    scrollCurrent: 0,
     mouse: new THREE.Vector2(),
+    parallax: { x: 0, y: 0 },
     hoveredObject: null,
-    // Teleportation state
-    isTeleporting: false,
-    teleportProgress: 0,
-    teleportStart: { pos: new THREE.Vector3(), yaw: 0, pitch: 0 },
-    teleportTarget: { pos: new THREE.Vector3(), yaw: 0, pitch: 0 },
-    // Zone tracking for debounce
+    // Zone tracking
     currentZone: null
 };
 
-// ===== Waypoint Definitions (Spaced Out) =====
-const WAYPOINTS = {
-    entrance: { pos: new THREE.Vector3(0, 2, -12), yaw: Math.PI, pitch: 0.10 }, // About Me (Centered)
-    academy: { pos: new THREE.Vector3(-5, 2, -25), yaw: Math.PI / 2, pitch: 0.10 },
-    organizations: { pos: new THREE.Vector3(5, 2, -40), yaw: -Math.PI / 2, pitch: 0.10 },
-    roles: { pos: new THREE.Vector3(-5, 2, -55), yaw: Math.PI / 2, pitch: 0.10 },
-    activities: { pos: new THREE.Vector3(5, 2, -70), yaw: -Math.PI / 2, pitch: 0.10 },
-    achievements: { pos: new THREE.Vector3(6, 2, -85), yaw: -Math.PI / 2, pitch: 0.10 }, // New Location
-    contact: { pos: new THREE.Vector3(0, 2, -95), yaw: 0, pitch: 0.50 }
-};
-
-// ===== Trigger Zones Definition (Spaced Out) =====
+// ===== Waypoint Definitions DELETED (Scroll based now) =====
 const ZONES = {
-    entrance: {
-        xMin: -5, xMax: 5,    // Centered Trigger Zone
-        zMin: -14, zMax: -6,  // Adjusted for new checkpoint
-        title: 'PROFESSIONAL PROFILE',
-        introName: 'Valentino Hose',
-        subtitle: 'Informatics Student & Web Developer',
-        items: [
-            { title: '✦ Web Development', sub: '', detail: '' },
-            { title: '✦ Analytical Problem Solving', sub: '', detail: '' },
-            { title: '✦ User Experience Design', sub: '', detail: '' }
-        ],
-        extraHtml: `<hr class="divider"><p class="award-text">Penerima <strong>The Dean's Most Outstanding List Award</strong> dari Universitas Kristen Maranatha periode 2024/2025.</p>`
-    },
-    academy: {
-        xMin: -15, xMax: -4,
-        zMin: -28, zMax: -22,
-        title: 'ACADEMY',
-        items: [
-            { title: 'Maranatha Christian University', sub: '2024 - Present', detail: 'S1 Teknik Informatika' },
-            { title: 'SMAK Kalam Kudus', sub: '2021 - 2024', detail: 'Science Major' }
-        ]
-    },
-    organizations: {
-        xMin: 4, xMax: 15,
-        zMin: -43, zMax: -37,
-        title: 'ORGANIZATIONS',
-        items: [
-            { title: 'Ketua HMIF', sub: 'Himpunan Mahasiswa', detail: 'Leading Association' },
-            { title: 'Google Ambassador', sub: '2025 - 2026', detail: 'Campus Tech Rep' },
-            { title: 'UKOR Free Fire', sub: 'Cabinet Member', detail: 'Esports Community' }
-        ]
-    },
-    roles: {
-        xMin: -15, xMax: -4,
-        zMin: -58, zMax: -52,
-        title: 'MORE ROLES',
-        items: [
-            { title: 'Kemitraan HMIF', sub: 'Active Staff', detail: 'Partnership Division' }
-        ]
-    },
-    activities: {
-        xMin: 4, xMax: 15,
-        zMin: -73, zMax: -67,
-        title: 'ACTIVITIES',
-        items: [
-            { title: 'Lab Staff GWM', sub: 'Internship', detail: 'Laboratory Assistant' },
-            { title: 'Teaching Assistant', sub: 'Logika & Project Next', detail: 'Academic Mentor' }
-        ]
-    },
-    achievements: {
-        xMin: 4, xMax: 15, // Right side
-        zMin: -88, zMax: -82,
-        title: 'ACHIEVEMENTS',
-        items: [
-            { title: "The Dean's Most Outstanding List", sub: "2024/2025", detail: "Highest Academic Honor" }
-        ],
-        extraHtml: `<p class="award-text">Recognized for maintaining a perfect GPA and active participation in university development.</p>`
-    },
-    contact: {
-        xMin: -5, xMax: 5,
-        zMin: -98, zMax: -90,
-        title: 'CONTACT',
-        items: [
-            { title: 'Email', sub: 'valentinohose@gmail.com', detail: 'Primary Contact' },
-            { title: 'LinkedIn', sub: 'linkedin.com/in/valentinohose', detail: 'Professional Network' },
-            { title: 'GitHub', sub: 'github.com/VHose', detail: 'Code Repository' }
-        ]
-    }
+    // Zones will now be based on Z-position ranges in the loop
 };
 
 // ===== Scene Setup =====
 const canvas = document.getElementById('three-canvas');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(CONFIG.colors.background);
-scene.fog = new THREE.Fog(CONFIG.colors.background, 10, 80);
+// NO FOG
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
-// Spawn inside the gallery at entrance, facing into the hall
-camera.position.set(13, 2, -5);
-camera.rotation.y = Math.PI;
+// Initial Position
+camera.position.set(0, 5.5, 5); // Start slightly back
+camera.rotation.set(0, 0, 0);   // Facing Forward (towards negative Z)
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap at 2x for performance
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -153,13 +66,19 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const raycaster = new THREE.Raycaster();
 const clickableObjects = [];
 
-// ===== Brighter Lighting =====
-const ambientLight = new THREE.AmbientLight(0xFFFFFF, 1.5);  // Increased intensity
+// ===== Brighter Lighting (No Ceiling Lights) =====
+const ambientLight = new THREE.AmbientLight(0xFFFFFF, 2.0);  // Very bright ambient
 scene.add(ambientLight);
 
-const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFF, 1.0);  // High brightness
+const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFF, 1.2);
 hemiLight.position.set(0, 20, 0);
 scene.add(hemiLight);
+
+// Directional Light for Shadows (Sun-like)
+const dirLight = new THREE.DirectionalLight(0xFFFFFF, 1.0);
+dirLight.position.set(10, 20, 10);
+dirLight.castShadow = true;
+scene.add(dirLight);
 
 function addWarmLight(x, y, z) {
     const light = new THREE.PointLight(0xFFFFFF, 1.0, 40);  // Brighter, longer range
@@ -1267,292 +1186,284 @@ function checkZone() {
 function buildScene() {
     createRoom();
 
-    // ===== Front Wall: "The Scholarly Gallery" =====
+    // ===== Section 1: ABOUT ME (Z = 0) =====
+    // Floating "Hero" Section
     const introGroup = new THREE.Group();
-    introGroup.position.set(0, 7.5, -0.1);
-    introGroup.rotation.y = Math.PI;
+    introGroup.position.set(0, 5.5, -5);
+    introGroup.rotation.y = 0; // Face Camera
 
-    // "ABOUT ME" title
-    const nameText = createText("ABOUT ME", { fontSize: 1.0, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (nameText) { nameText.position.y = 0.3; introGroup.add(nameText); }
+    // Profile Image
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load('assets/img/profile.jpg', (texture) => {
+        const aspect = texture.image.width / texture.image.height;
+        const imgHeight = 4.0;
+        const imgWidth = imgHeight * aspect;
+        // Floating Mesh
+        const profileMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(imgWidth, imgHeight),
+            new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide })
+        );
+        profileMesh.position.set(-2.2, 0, 0);
+        introGroup.add(profileMesh);
 
-    // Subtitles
-    const jobText = createText("Valentino Hose", { fontSize: 0.4, color: CONFIG.colors.accent, anchorX: 'center' });
-    if (jobText) { jobText.position.y = -0.8; introGroup.add(jobText); }
+        // Floating Shadow
+        const shadowMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(imgWidth, imgHeight),
+            new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 })
+        );
+        shadowMesh.position.set(-2.1, -0.2, -0.1);
+        introGroup.add(shadowMesh);
+    }, undefined, (err) => {
+        // Fallback if image missing
+        const fallbackGeo = new THREE.PlaneGeometry(3, 4);
+        const fallbackMat = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+        const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
+        fallbackMesh.position.set(-2.2, 0, 0);
+        introGroup.add(fallbackMesh);
+    });
 
-    const roleText = createText("Informatics Student & Web Developer", { fontSize: 0.18, color: CONFIG.colors.textBody, anchorX: 'center' });
-    if (roleText) { roleText.position.y = -1.2; introGroup.add(roleText); }
+    // Text - Floating
+    const nameText = createText("Valentino Hose", { fontSize: 0.8, color: CONFIG.colors.textHeader, anchorX: 'left' });
+    if (nameText) { nameText.position.set(0.5, 1.2, 0); introGroup.add(nameText); }
+
+    const roleText = createText("Google Student Ambassador", { fontSize: 0.35, color: 0x333333, anchorX: 'left' });
+    if (roleText) { roleText.position.set(0.5, 0.5, 0); introGroup.add(roleText); }
+
+    const detailText = createText("Informatics Student & Web Developer", { fontSize: 0.25, color: 0x666666, anchorX: 'left' });
+    if (detailText) { detailText.position.set(0.5, 0.0, 0); introGroup.add(detailText); }
+
+    const ctaText = createText("AVAILABLE FOR OPPORTUNITIES", { fontSize: 0.25, color: CONFIG.colors.accent, anchorX: 'left' });
+    if (ctaText) { ctaText.position.set(0.5, -0.8, 0); introGroup.add(ctaText); }
 
     scene.add(introGroup);
 
-    // ===== Side Walls Content (Spaced Out) =====
-    // Academy (-25)
-    createWallFrame('left', -25, "ACADEMY", [
-        { title: "Maranatha Christian Univ.", sub: "2024 - Present", detail: "S1 Teknik Informatika" },
-        { title: "SMAK Kalam Kudus", sub: "2021 - 2024", detail: "Science Major" }
-    ]);
+    // Helper to create Floating Panels
+    function createFloatingPanel(x, z, title, items) {
+        const group = new THREE.Group();
+        group.position.set(x, 4, z);
+        group.rotation.y = 0;
 
-    // Organizations (-40)
-    createWallFrame('right', -40, "ORGANIZATIONS", [
-        { title: "Ketua HMIF", sub: "Himpunan Mahasiswa", detail: "Leading Association" },
-        { title: "Google Ambassador", sub: "2025 - 2026", detail: "Campus Tech Rep" },
-        { title: "UKOR Free Fire", sub: "Cabinet Member", detail: "Esports Community" }
-    ]);
+        // Header
+        const header = createText(title, { fontSize: 0.5, color: CONFIG.colors.accent, anchorX: 'center' });
+        if (header) { header.position.set(0, 1.5, 0); group.add(header); }
 
-    // Roles (-55)
-    createWallFrame('left', -55, "MORE ROLES", [
-        { title: "Kemitraan HMIF", sub: "Active Staff", detail: "Partnership Division" },
-    ]);
+        // Items
+        items.forEach((item, idx) => {
+            const yPos = 0.5 - (idx * 0.8);
 
-    // Activities (-70)
-    createWallFrame('right', -70, "ACTIVITIES", [
-        { title: "Lab Staff GWM", sub: "Internship", detail: "Laboratory Assistant" },
-        { title: "Teaching Assistant", sub: "Logika & Project Next", detail: "Academic Mentor" }
-    ]);
+            const itemTitle = createText(item.title, { fontSize: 0.35, color: CONFIG.colors.textHeader, anchorX: 'center' });
+            if (itemTitle) { itemTitle.position.set(0, yPos, 0); group.add(itemTitle); }
 
-    // Achievements (-85) - Right Side, near End
-    const performGroup = createWallFrame('right', -85, "ACHIEVEMENTS", []); // Just Header
-    // Certificate Frame
-    const rightWallX = CONFIG.room.width / 2 - 0.15;
-    createCertificateFrame(rightWallX, 3.8, -85, -Math.PI / 2);
+            const itemSub = createText(item.sub, { fontSize: 0.25, color: 0x555555, anchorX: 'center' });
+            if (itemSub) { itemSub.position.set(0, yPos - 0.3, 0); group.add(itemSub); }
+        });
 
-    // ===== Contact Section (-95+) =====
-    const endZ = -CONFIG.room.length + 0.15;
-    const contactHeader = createText("LET'S CONNECT", { fontSize: 0.5, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (contactHeader) { contactHeader.position.set(0, 7, endZ + 0.1); scene.add(contactHeader); }
+        // Floating Backplane
+        const width = 4 + (title.length * 0.1);
+        const height = 3 + (items.length * 0.8);
+        // Optional subtle backing
+        /*
+        const plane = new THREE.Mesh(
+             new THREE.PlaneGeometry(width, height),
+             new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+        );
+        plane.position.z = -0.1;
+        group.add(plane); 
+        */
 
-    createIcon("email", "mailto:valentinohose@gmail.com", new THREE.Vector3(-2.5, 5, endZ), 0);
-    createIcon("linkedin", "https://linkedin.com/in/valentinohose", new THREE.Vector3(-0.8, 5, endZ), 0);
-    createIcon("github", "https://github.com/VHose", new THREE.Vector3(0.8, 5, endZ), 0);
-    createIcon("instagram", "https://instagram.com/legaseeh", new THREE.Vector3(2.5, 5, endZ), 0);
-
-    // Decor & Lighting — 3 chandeliers (no duplicates)
-    createChandelier(0, -25);
-    createChandelier(0, -55);
-    createChandelier(0, -85);
-
-    // Lecterns
-    createLectern(0, -8, 'center');  // About Me (Centered) - Directly visible
-    createLectern(0, -25, 'left');   // Academy
-    createLectern(0, -40, 'right');  // Organizations
-    createLectern(0, -55, 'left');   // Roles
-    createLectern(0, -70, 'right');  // Activities
-    createLectern(0, -85, 'right');  // Achievements (New)
-
-    // Warm Lights
-    for (let z = -10; z > -100; z -= 15) {
-        addWarmLight(0, CONFIG.room.height - 0.5, z);
+        scene.add(group);
     }
 
-    const loaderEl = document.getElementById('loader');
-    if (loaderEl) {
-        loaderEl.style.opacity = 0;
-        setTimeout(() => loaderEl.remove(), 1000);
-    }
+    // ===== Section 2: EXPERIENCES (Z = -30) =====
+    // Floating Left & Right closer to center
+    const expZ = -30;
+    const expHeader = createText("EXPERIENCES", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
+    if (expHeader) { expHeader.position.set(0, 7.5, expZ); scene.add(expHeader); }
+
+    createFloatingPanel(-3.5, expZ, "WORK", [
+        { title: "Lab Staff GWM", sub: "Internship (2024)", detail: "" },
+        { title: "Teaching Assistant", sub: "Logika & Project Next", detail: "" }
+    ]);
+
+    createFloatingPanel(3.5, expZ, "ORGANIZATIONS", [
+        { title: "Ketua HMIF", sub: "Himpunan Mahasiswa", detail: "" },
+        { title: "Google Ambassador", sub: "2025 - 2026", detail: "" }
+    ]);
+
+    // ===== Section 3: PROJECTS (Z = -60) =====
+    const projZ = -60;
+    const projHeader = createText("PROJECTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
+    if (projHeader) { projHeader.position.set(0, 7.5, projZ); scene.add(projHeader); }
+
+    // Project Cards - Floating
+    createFloatingPanel(-4, projZ, "E-Commerce", [{ title: "Laravel Fullstack", sub: "Web App", detail: "" }]);
+    createFloatingPanel(0, projZ, "AI Chatbot", [{ title: "Python TensorFlow", sub: "Machine Learning", detail: "" }]);
+    createFloatingPanel(4, projZ, "3D Portfolio", [{ title: "Three.js", sub: "Interactive Web", detail: "" }]);
+
+    // ===== Section 4: ACHIEVEMENTS (Z = -90) =====
+    const achZ = -90;
+    const achHeader = createText("ACHIEVEMENTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
+    if (achHeader) { achHeader.position.set(0, 7.5, achZ); scene.add(achHeader); }
+
+    // Certificate (Floating)
+    const certGroup = new THREE.Group();
+    certGroup.position.set(3, 4, achZ);
+    createCertificateFrame(0, 0, 0, 0, certGroup); // Add to group, local coords
+    scene.add(certGroup);
+
+    createFloatingPanel(-3, achZ, "Dean's List", [
+        { title: "Most Outstanding", sub: "2024/2025", detail: "" }
+    ]);
+
+
+    // ===== Contact Section (End) =====
+    const endZ = -CONFIG.room.length + 5;
+    const contactHeader = createText("LET'S CONNECT", { fontSize: 0.6, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    if (contactHeader) { contactHeader.position.set(0, 6, endZ); scene.add(contactHeader); }
+
+    // Floating Icons
+    createIcon("email", "mailto:valentinohose@gmail.com", new THREE.Vector3(-1.5, 4, endZ), 0);
+    createIcon("linkedin", "https://linkedin.com/in/valentinohose", new THREE.Vector3(-0.5, 4, endZ), 0);
+    createIcon("github", "https://github.com/VHose", new THREE.Vector3(0.5, 4, endZ), 0);
+    createIcon("instagram", "https://instagram.com/legaseeh", new THREE.Vector3(1.5, 4, endZ), 0);
+
 }
 
-// ===== Initial Load & Animate (Tetap Sama) =====
-loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+// ===== Initial Load & Animate =====
+// Loading Logic
+let loadProgress = 0;
+const loaderText = document.getElementById('loader-percentage');
+const loaderEl = document.getElementById('loader');
+
+// Simulate fast loading to 90%
+const loadInterval = setInterval(() => {
+    if (loadProgress < 90) {
+        // Fast increment
+        loadProgress += Math.floor(Math.random() * 5) + 1;
+        if (loadProgress > 90) loadProgress = 90;
+        if (loaderText) loaderText.innerText = loadProgress + '%';
+    }
+}, 30); // Update every 30ms
+
+// Load Font (Actual Asset)
+loader.load('https://threejs.org/examples/fonts/optimer_bold.typeface.json', (font) => {
     loadedFont = font;
     buildScene();
+
+    // Asset Loaded: Push to 100%
+    clearInterval(loadInterval);
+    loadProgress = 90;
+
+    // Finish animation
+    const finishInterval = setInterval(() => {
+        loadProgress += 2;
+        if (loaderText) loaderText.innerText = loadProgress + '%';
+
+        if (loadProgress >= 100) {
+            if (loaderText) loaderText.innerText = '100%';
+            clearInterval(finishInterval);
+
+            // Warm Lights
+            for (let z = -10; z > -100; z -= 15) {
+                addWarmLight(0, CONFIG.room.height - 0.5, z);
+            }
+
+            console.log("Loading Complete (100%)");
+
+            // Fade out and remove loader
+            setTimeout(() => {
+                console.log("Removing loader UI...");
+                if (loaderEl) {
+                    loaderEl.style.opacity = 0;
+                    setTimeout(() => {
+                        loaderEl.remove();
+                        console.log("Loader removed from DOM");
+                    }, 800);
+                }
+            }, 500); // 0.5s delay to show 100%
+        }
+    }, 20);
+}, undefined, (err) => {
+    console.error("Font load failed", err);
+    // Even if fail, close loader so user isn't stuck
+    if (loaderEl) loaderEl.remove();
 });
+
+// ===== Navbar Listeners =====
+document.querySelectorAll('#main-nav a').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = e.target.getAttribute('data-target');
+        let zTarget = 0;
+        switch (target) {
+            case 'entrance': zTarget = 5; break; // Start
+            case 'experiences': zTarget = -30; break;
+            case 'projects': zTarget = -60; break;
+            case 'achievements': zTarget = -90; break;
+            case 'contact': zTarget = -110; break;
+        }
+        state.scrollTarget = zTarget;
+    });
+});
+
+
+// ===== Scroll & Parallax Logic =====
+function onWheel(event) {
+    // Scroll affects target Z position
+    // Delta comes from mouse wheel. Positive = Scroll Down (Move Forward in Z? or Backward?)
+    // Typically: Scroll Down -> Go Deeper into gallery (Negative Z)
+
+    // speed factor
+    const speed = 0.01;
+    state.scrollTarget -= event.deltaY * speed;
+
+    // Clamp scroll
+    // StartZ = 5 (Entrance)
+    // EndZ = -100 (Back wall)
+    state.scrollTarget = Math.max(-100, Math.min(5, state.scrollTarget));
+}
 
 function onMouseMove(event) {
+    // Normalized mouse pos -1 to 1
     state.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     state.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    if (state.isDragging) {
-        state.yaw -= event.movementX * CONFIG.nav.lookSpeed;
-        state.pitch -= event.movementY * CONFIG.nav.lookSpeed;
-        state.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, state.pitch));
-    }
+
+    // Parallax target
+    state.parallax.x = state.mouse.x * CONFIG.scroll.parallax;
+    state.parallax.y = state.mouse.y * CONFIG.scroll.parallax;
 }
 
-function onMouseDown(event) {
-    if (event.button === 0) {
-        raycaster.setFromCamera(state.mouse, camera);
-        const intersects = raycaster.intersectObjects(clickableObjects, true);
-        if (intersects.length > 0) {
-            let obj = intersects[0].object;
-            while (obj.parent && !obj.userData.url) { obj = obj.parent; }
-            if (obj.userData.url) window.open(obj.userData.url, '_blank');
-        }
-    }
-    if (event.button === 2) { state.isDragging = true; document.body.style.cursor = 'grabbing'; }
-}
-
-function onMouseUp() { state.isDragging = false; document.body.style.cursor = 'default'; }
-
+window.addEventListener('wheel', onWheel);
 document.addEventListener('mousemove', onMouseMove);
-document.addEventListener('mousedown', onMouseDown);
-document.addEventListener('mouseup', onMouseUp);
-document.addEventListener('contextmenu', e => e.preventDefault());
-
-document.addEventListener('keydown', (e) => {
-    switch (e.code) {
-        case 'KeyW': state.move.forward = true; break;
-        case 'KeyS': state.move.backward = true; break;
-        case 'KeyA': state.move.left = true; break;
-        case 'KeyD': state.move.right = true; break;
-    }
-});
-
-document.addEventListener('keyup', (e) => {
-    switch (e.code) {
-        case 'KeyW': state.move.forward = false; break;
-        case 'KeyS': state.move.backward = false; break;
-        case 'KeyA': state.move.left = false; break;
-        case 'KeyD': state.move.right = false; break;
-    }
-});
-
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ===== Teleportation Function =====
-function teleportTo(waypointName) {
-    const waypoint = WAYPOINTS[waypointName];
-    if (!waypoint || state.isTeleporting) return;
-
-    // Store starting position
-    state.teleportStart.pos.copy(camera.position);
-    state.teleportStart.yaw = state.yaw;
-    state.teleportStart.pitch = state.pitch;
-
-    // Set target
-    state.teleportTarget.pos.copy(waypoint.pos);
-    state.teleportTarget.yaw = waypoint.yaw;
-    state.teleportTarget.pitch = waypoint.pitch;
-
-    // Start teleportation
-    state.isTeleporting = true;
-    state.teleportProgress = 0;
-
-    // Store target zone for showing info panel when teleport completes
-    state.teleportTargetZone = ZONES[waypointName] ? waypointName : null;
-
-    // Stop any current movement
-    state.velocity.set(0, 0, 0);
-    state.move.forward = false;
-    state.move.backward = false;
-    state.move.left = false;
-    state.move.right = false;
-}
-
-// Easing function for smooth transitions
-function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-// ===== Waypoint Navigation Event Listeners =====
-const navToggle = document.getElementById('nav-toggle');
-const waypointList = document.getElementById('waypoint-list');
-
-// Toggle menu on hamburger button click
-navToggle?.addEventListener('click', () => {
-    waypointList?.classList.toggle('open');
-});
-
-// Waypoint button clicks
-document.querySelectorAll('.waypoint-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        const waypointName = e.currentTarget.dataset.waypoint;
-        teleportTo(waypointName);
-        // Close menu after selection
-        waypointList?.classList.remove('open');
-    });
-});
-
-// Close menu when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('#waypoint-nav')) {
-        waypointList?.classList.remove('open');
-    }
-});
-
-// Pre-allocated vectors for animate loop (avoid GC pressure)
-const _forward = new THREE.Vector3();
-const _right = new THREE.Vector3();
-const _yAxis = new THREE.Vector3(0, 1, 0);
-
+// ===== Animate Loop =====
 function animate() {
     requestAnimationFrame(animate);
 
-    // Handle teleportation animation
-    if (state.isTeleporting) {
-        state.teleportProgress += 0.025; // Speed of transition
-        const t = easeInOutCubic(Math.min(state.teleportProgress, 1));
+    // 1. Smooth Scroll (Damping)
+    state.scrollCurrent = THREE.MathUtils.lerp(state.scrollCurrent, state.scrollTarget, CONFIG.scroll.damp);
 
-        // Interpolate position
-        camera.position.lerpVectors(state.teleportStart.pos, state.teleportTarget.pos, t);
+    // Updates camera Z
+    camera.position.z = state.scrollCurrent;
 
-        // Interpolate rotation
-        state.yaw = state.teleportStart.yaw + (state.teleportTarget.yaw - state.teleportStart.yaw) * t;
-        state.pitch = state.teleportStart.pitch + (state.teleportTarget.pitch - state.teleportStart.pitch) * t;
+    // 2. Parallax Effect (Move Camera X/Y slightly based on mouse)
+    // We linearly interpolate camera position X and Y towards parallax target
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, state.parallax.x, 0.1);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 5.5 + state.parallax.y, 0.1); // Base height 5.5
 
-        if (state.teleportProgress >= 1) {
-            state.isTeleporting = false;
-            camera.position.copy(state.teleportTarget.pos);
-            state.yaw = state.teleportTarget.yaw;
-            state.pitch = state.teleportTarget.pitch;
+    // 3. LookAt Logic
+    // Camera always looks slightly ahead
+    // But we want a fixed straight view mostly.
+    camera.rotation.set(0, 0, 0); // Reset
+    // Maybe slight rotation based on mouse too?
+    camera.rotation.y = -state.mouse.x * 0.05;
+    camera.rotation.x = state.mouse.y * 0.05;
 
-            // Show info panel if teleported to a zone waypoint
-            if (state.teleportTargetZone) {
-                state.currentZone = state.teleportTargetZone;
-                showInfoPanel(state.teleportTargetZone);
-                state.teleportTargetZone = null;
-            }
-        }
-    }
-
-    raycaster.setFromCamera(state.mouse, camera);
-    const intersects = raycaster.intersectObjects(clickableObjects);
-    if (intersects.length > 0) {
-        let obj = intersects[0].object;
-        if (!obj.userData.url && obj.parent?.userData?.url) obj = obj.parent;
-        if (obj.userData?.isInteractive) {
-            if (state.hoveredObject !== obj) {
-                if (state.hoveredObject) state.hoveredObject.material.color.setHex(state.hoveredObject.userData.originalColor);
-                state.hoveredObject = obj;
-                obj.material.color.setHex(CONFIG.colors.iconHover);
-                document.body.style.cursor = 'pointer';
-            }
-        }
-    } else {
-        if (state.hoveredObject) {
-            state.hoveredObject.material.color.setHex(state.hoveredObject.userData.originalColor);
-            state.hoveredObject = null;
-            document.body.style.cursor = 'default';
-        }
-    }
-
-    camera.rotation.set(0, 0, 0);
-    camera.rotateY(state.yaw);
-    camera.rotateX(state.pitch);
-
-    // Only process movement if not teleporting
-    if (!state.isTeleporting) {
-        _forward.set(0, 0, -1).applyAxisAngle(_yAxis, state.yaw);
-        _right.set(1, 0, 0).applyAxisAngle(_yAxis, state.yaw);
-        if (state.move.forward) state.velocity.add(_forward.clone().multiplyScalar(CONFIG.nav.moveSpeed));
-        if (state.move.backward) state.velocity.sub(_forward.clone().multiplyScalar(CONFIG.nav.moveSpeed));
-        if (state.move.left) state.velocity.sub(_right.clone().multiplyScalar(CONFIG.nav.moveSpeed));
-        if (state.move.right) state.velocity.add(_right.clone().multiplyScalar(CONFIG.nav.moveSpeed));
-        camera.position.add(state.velocity);
-        state.velocity.multiplyScalar(CONFIG.nav.damping);
-    }
-
-    const halfW = CONFIG.room.width / 2 - 0.5;
-    const roomEnd = -CONFIG.room.length + 1;
-    const roomStart = -1;
-    camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
-    camera.position.z = Math.max(roomEnd, Math.min(roomStart, camera.position.z));
-    camera.position.y = 1.7;
-
-    // Check trigger zones for info panel
-    checkZone();
 
     renderer.render(scene, camera);
 }
