@@ -32,8 +32,8 @@ const CONFIG = {
 
 // ===== State =====
 const state = {
-    scrollTarget: 0,
-    scrollCurrent: 0,
+    scrollTarget: 8, // Start at 8 (User defined limit)
+    scrollCurrent: 8,
     mouse: new THREE.Vector2(),
     parallax: { x: 0, y: 0 },
     hoveredObject: null,
@@ -56,7 +56,7 @@ scene.background = new THREE.Color(CONFIG.colors.background);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
 // Initial Position
-camera.position.set(0, 5.5, 15); // Start very far back (grand entrance)
+camera.position.set(0, 5.5, 8); // Start at user-defined limit
 camera.rotation.set(0, 0, 0);   // Facing Forward (towards negative Z)
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -1316,12 +1316,12 @@ function buildScene() {
         state.animatedObjects.push(achHeader);
     }
 
-    // Certificate (Floating)
-    const certGroup = new THREE.Group();
-    certGroup.position.set(3, 4, achZ);
-    createCertificateFrame(0, 0, 0, 0, certGroup); // Add to group, local coords
-    scene.add(certGroup);
-    state.animatedObjects.push(certGroup);
+    // Certificate (Floating) - Temporarily disabled
+    // const certGroup = new THREE.Group();
+    // certGroup.position.set(3, 4, achZ);
+    // createCertificateFrame(0, 0, 0, 0, certGroup); // Add to group, local coords
+    // scene.add(certGroup);
+    // state.animatedObjects.push(certGroup);
 
     createFloatingPanel(-3, achZ, "Dean's List", [
         { title: "Most Outstanding", sub: "2024/2025", detail: "" }
@@ -1420,7 +1420,7 @@ document.querySelectorAll('#main-nav a').forEach(link => {
         // Adjusted targets to have "jarak" (distance) from the content
         // Content at: -30, -60, -90. Camera stops ~8 units before.
         switch (target) {
-            case 'entrance': zTarget = 15; break; // Start from far back
+            case 'entrance': zTarget = 8; break; // Start at 8
             case 'experiences': zTarget = -22; break; // Content at -30
             case 'projects': zTarget = -52; break; // Content at -60
             case 'achievements': zTarget = -82; break; // Content at -90
@@ -1442,9 +1442,9 @@ function onWheel(event) {
     state.scrollTarget -= event.deltaY * speed;
 
     // Clamp scroll
-    // StartZ = 15 (Further Back Entrance)
+    // StartZ = 8 (User Defined)
     // EndZ = -105 (Contact)
-    state.scrollTarget = Math.max(-105, Math.min(15, state.scrollTarget));
+    state.scrollTarget = Math.max(-105, Math.min(8, state.scrollTarget));
 }
 
 function onMouseMove(event) {
