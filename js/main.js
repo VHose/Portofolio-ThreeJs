@@ -10,14 +10,15 @@ import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 // ===== Configuration =====
 const CONFIG = {
     colors: {
-        background: 0xF5F5F5, // Bright exterior
-        wall: 0xFFFFFF,       // White walls
-        frame: 0x2C1810,
+        background: 0xF5F5DC, // Cream
+        wall: 0xFFFFFF,
+        frame: 0x3D2B1F,
         frameBack: 0xFFFAF0,
-        textHeader: 0x111111, // Blacks
-        textBody: 0x333333,   // Dark Gray
+        textHeader: 0x1A1A1A, // Dark charcoal
+        textSub: 0x4A4A4A,    // Medium Grey
         accent: 0xB8860B,     // Gold
-        iconHover: 0xE07B39
+        navy: 0x0A192F,       // Dark Blue
+        white: 0xFFFFFF
     },
     room: {
         width: 30,
@@ -605,8 +606,10 @@ function createRoom() {
 // ===== Helpers (createText, createFramedPanel, createIcon, createWallFrame tetap sama) =====
 const loader = new FontLoader();
 let loadedFont = null;
+const sharedTextureLoader = new THREE.TextureLoader();
 
 function createText(content, options = {}) {
+    // ... (start of createText)
     if (!loadedFont) return null;
     const size = options.fontSize || 0.5;
     const color = options.color || CONFIG.colors.textBody;
@@ -1261,6 +1264,115 @@ function checkZone() {
 }
 
 // ===== Build Scene =====
+function create3DButton(text, x, isGold = false) {
+    const btnGroup = new THREE.Group();
+    const bW = 2.2, bH = 0.6, bD = 0.1;
+
+    const btnGeo = new THREE.BoxGeometry(bW, bH, bD);
+    const btnMat = new THREE.MeshStandardMaterial({
+        color: isGold ? CONFIG.colors.accent : 0xFFFFFF,
+        roughness: 0.3,
+        metalness: 0.2
+    });
+    const btn = new THREE.Mesh(btnGeo, btnMat);
+    btnGroup.add(btn);
+
+    // Border for white button
+    if (!isGold) {
+        const outGeo = new THREE.BoxGeometry(bW + 0.02, bH + 0.02, bD - 0.02);
+        const outMat = new THREE.MeshStandardMaterial({ color: 0x999999 });
+        const outline = new THREE.Mesh(outGeo, outMat);
+        btnGroup.add(outline);
+    }
+
+    const btnText = createText(text, {
+        fontSize: 0.14,
+        color: isGold ? 0xFFFFFF : CONFIG.colors.textHeader,
+        anchorX: 'center'
+    });
+    if (btnText) {
+        btnText.position.z = bD / 2 + 0.01;
+        btnGroup.add(btnText);
+    }
+
+    btnGroup.position.set(x, 0, 0);
+    btn.userData = { isInteractive: true, hoverScale: 1.05 };
+    clickableObjects.push(btn);
+    return btnGroup;
+}
+
+function createIconFrame(type, url, position, label, sub) {
+    const group = new THREE.Group();
+    group.position.copy(position);
+
+    // Reduced sizes
+    const size = 1.2; // Was 1.6
+    const frameW = size + 0.15; // Thinner border (Was size + 0.3)
+    const frameH = size + 0.15;
+    const frameD = 0.1; // Thinner
+
+    // Brand Colors
+    const brandColors = {
+        'email': 0xEA4335,     // Gmail Red
+        'linkedin': 0x0A66C2,  // LinkedIn Blue
+        'github': 0x181717,    // GitHub Black
+        'instagram': 0xE4405F  // Instagram Pink
+    };
+
+    const color = brandColors[type] || CONFIG.colors.accent;
+
+    // Brand Colored Frame
+    const outerMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.5 });
+    const innerMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF }); // Pure White Background
+
+    // Outer box (The Frame)
+    const outerFrame = new THREE.Mesh(new THREE.BoxGeometry(frameW, frameH, frameD), outerMat);
+    group.add(outerFrame);
+
+    // Inner part (The Content Area)
+    const innerArea = new THREE.Mesh(new THREE.BoxGeometry(size, size, 0.05), innerMat);
+    innerArea.position.z = frameD / 2 + 0.01;
+    group.add(innerArea);
+
+    // Icon Texture
+    const iconGeo = new THREE.PlaneGeometry(size * 0.6, size * 0.6);
+    const iconUrls = {
+        'email': 'https://cdn-icons-png.flaticon.com/512/732/732200.png',
+        'linkedin': 'https://cdn-icons-png.flaticon.com/512/174/174857.png',
+        'github': 'https://cdn-icons-png.flaticon.com/512/25/25231.png',
+        'instagram': 'https://cdn-icons-png.flaticon.com/512/174/174855.png'
+    };
+
+    sharedTextureLoader.load(iconUrls[type], (texture) => {
+        const iconMat = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+        const iconMesh = new THREE.Mesh(iconGeo, iconMat);
+        iconMesh.position.z = frameD / 2 + 0.07;
+        group.add(iconMesh);
+        iconMesh.userData = { url, isInteractive: true };
+        clickableObjects.push(iconMesh);
+    });
+
+    // Label Title
+    const lTitle = createText(label, { fontSize: 0.22, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    if (lTitle) {
+        lTitle.position.set(0, -1.0, 0); // Adjusted position for smaller frame
+        group.add(lTitle);
+    }
+
+    // Label Sub
+    const lSub = createText(sub, { fontSize: 0.12, color: 0x888888, anchorX: 'center' });
+    if (lSub) {
+        lSub.position.set(0, -1.25, 0); // Adjusted position
+        group.add(lSub);
+    }
+
+    return group;
+}
+
 function buildScene() {
     createRoom();
 
@@ -1271,8 +1383,7 @@ function buildScene() {
     introGroup.rotation.y = 0; // Face Camera
 
     // Profile Image
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load('assets/img/profile.jpg', (texture) => {
+    sharedTextureLoader.load('assets/img/profile.jpg', (texture) => {
         const aspect = texture.image.width / texture.image.height;
         const imgHeight = 4.0;
         const imgWidth = imgHeight * aspect;
@@ -1434,24 +1545,56 @@ function buildScene() {
     state.animatedObjects.push(tGroup);
 
 
-    // ===== Section 5: CONTACT (On the Wall at Z = -200) =====
+    // ===== Section 5: CONTACT (Image 2 Aesthetic) =====
     const endZ = -198; // Just in front of the back wall (-200)
 
-    const contactHeader = createText("LET'S CONNECT", { fontSize: 0.8, color: CONFIG.colors.textHeader, anchorX: 'center' });
+    const contactGroup = new THREE.Group();
+    contactGroup.position.set(0, 5.0, endZ);
+    scene.add(contactGroup);
+
+    // Big Bold Title - LET'S CONNECT
+    const contactHeader = createText("LET'S CONNECT", { fontSize: 1.2, color: 0x888888, anchorX: 'center' }); // Greyscale/Silver as in Image 2
     if (contactHeader) {
-        contactHeader.position.set(0, 6.5, endZ); // slightly higher on wall
-        scene.add(contactHeader);
-        state.animatedObjects.push(contactHeader);
+        contactHeader.position.set(0, 2.5, 0);
+        contactGroup.add(contactHeader);
     }
 
-    // Floating Icons (Increased spacing)
-    // Spacing 1.8 units (was 1.0)
-    const icon1 = createIcon("email", "mailto:valentinohose@gmail.com", new THREE.Vector3(-2.7, 5, endZ), 0);
-    const icon2 = createIcon("linkedin", "https://linkedin.com/in/valentinohose", new THREE.Vector3(-0.9, 5, endZ), 0);
-    const icon3 = createIcon("github", "https://github.com/VHose", new THREE.Vector3(0.9, 5, endZ), 0);
-    const icon4 = createIcon("instagram", "https://instagram.com/legaseeh", new THREE.Vector3(2.7, 5, endZ), 0);
+    // Gold line under title
+    const cLineGeo = new THREE.PlaneGeometry(1.5, 0.02);
+    const cLineMat = new THREE.MeshBasicMaterial({ color: CONFIG.colors.accent });
+    const cLine = new THREE.Mesh(cLineGeo, cLineMat);
+    cLine.position.set(0, 1.8, 0);
+    contactGroup.add(cLine);
 
-    state.animatedObjects.push(icon1, icon2, icon3, icon4);
+    // Subtext - Italics style (simulated with spacing)
+    const cSubtext = createText("Step into my creative space. Each connection is a masterpiece waiting", { fontSize: 0.18, color: 0x666666, anchorX: 'center' });
+    if (cSubtext) {
+        cSubtext.position.set(0, 1.2, 0);
+        contactGroup.add(cSubtext);
+    }
+    const cSubtext2 = createText("to be painted.", { fontSize: 0.18, color: 0x666666, anchorX: 'center' });
+    if (cSubtext2) {
+        cSubtext2.position.set(0, 0.9, 0);
+        contactGroup.add(cSubtext2);
+    }
+
+    // Social Media Icons in Museum Frames
+    // Spacing for 4 icons
+    const iconData = [
+        { type: 'email', label: 'EMAIL', sub: 'DIRECT INQUIRY', url: 'mailto:valentinohose@gmail.com', x: -4.5 },
+        { type: 'linkedin', label: 'LINKEDIN', sub: 'PROFESSIONAL NETWORK', url: 'https://linkedin.com/in/valentinohose', x: -1.5 },
+        { type: 'github', label: 'GITHUB', sub: 'CODE REPOSITORIES', url: 'https://github.com/VHose', x: 1.5 },
+        { type: 'instagram', label: 'INSTAGRAM', sub: 'VISUAL JOURNEY', url: 'https://instagram.com/legaseeh', x: 4.5 }
+    ];
+
+    iconData.forEach(data => {
+        const frame = createIconFrame(data.type, data.url, new THREE.Vector3(data.x, -1.0, 0), data.label, data.sub);
+        contactGroup.add(frame);
+    });
+
+    state.animatedObjects.push(contactGroup);
+
+
 
     // Decor & Lighting — 3 chandeliers (Restored - Spaced out)
     // Adjust positions to match new length
@@ -1479,9 +1622,21 @@ const loadInterval = setInterval(() => {
 }, 30); // Update every 30ms
 
 // Load Font (Actual Asset)
-loader.load('https://threejs.org/examples/fonts/optimer_bold.typeface.json', (font) => {
+console.time("FontLoad");
+loader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/optimer_bold.typeface.json', (font) => {
+    console.timeEnd("FontLoad");
     loadedFont = font;
-    buildScene();
+
+    console.time("BuildScene");
+    try {
+        buildScene();
+    } catch (error) {
+        console.error("Error building scene:", error);
+        if (loaderText) loaderText.innerText = "Error: " + error.message;
+        // Don't remove loader if error, so user can see it
+        return;
+    }
+    console.timeEnd("BuildScene");
 
     // Asset Loaded: Push to 100%
     clearInterval(loadInterval);
@@ -1597,6 +1752,14 @@ window.addEventListener('wheel', onWheel);
 window.addEventListener('mousemove', onMouseMove);
 window.addEventListener('click', onClick);
 
+// Add dynamic spotlight to scene
+const followSpot = new THREE.SpotLight(0xFFF8DC, 2.0, 40, Math.PI / 4, 0.5, 1);
+followSpot.castShadow = true;
+scene.add(followSpot);
+const followSpotTarget = new THREE.Object3D();
+scene.add(followSpotTarget);
+followSpot.target = followSpotTarget;
+
 // ===== Animate Loop =====
 function animate() {
     requestAnimationFrame(animate);
@@ -1607,10 +1770,14 @@ function animate() {
     // Updates camera Z
     camera.position.z = state.scrollCurrent;
 
+    // Update Follow Spot Position (Always slightly ahead of camera)
+    followSpot.position.set(camera.position.x, CONFIG.room.height - 1, camera.position.z - 5);
+    followSpotTarget.position.set(camera.position.x, 3, camera.position.z - 15);
+
     // 2. Parallax Effect (Move Camera X/Y slightly based on mouse)
     // We linearly interpolate camera position X and Y towards parallax target
     camera.position.x = THREE.MathUtils.lerp(camera.position.x, state.parallax.x, 0.1);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 5.5 + state.parallax.y, 0.1); // Base height 5.5
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 5.0 + state.parallax.y, 0.1); // Base height 5.0 matches hero center
 
     // 3. LookAt Logic
     // Camera always looks slightly ahead

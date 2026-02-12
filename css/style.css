@@ -5,11 +5,26 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
 
+:root {
+    --bg-color: #F5F5DC;
+    /* Cream background */
+    --accent-color: #B8860B;
+    /* Gold */
+    --text-primary: #1A1A1A;
+    /* Dark charcoal */
+    --text-secondary: #4A4A4A;
+    --navy-dark: #0A192F;
+    /* Dark blue */
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Inter', sans-serif;
+}
+
 body {
     margin: 0;
     overflow: hidden;
-    background: #111;
-    font-family: 'Inter', sans-serif;
+    background: var(--bg-color);
+    font-family: var(--font-body);
+    color: var(--text-primary);
     user-select: none;
 }
 
@@ -37,9 +52,9 @@ h1 {
     position: absolute;
     top: 30px;
     left: 40px;
-    font-family: 'Playfair Display', serif;
+    font-family: var(--font-heading);
     font-size: 1.5rem;
-    color: rgba(0, 0, 0, 0.8);
+    color: var(--navy-dark);
     margin: 0;
     letter-spacing: 1px;
     text-transform: uppercase;
