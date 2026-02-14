@@ -27,7 +27,7 @@
 
     <!-- Debug Z Position -->
     <div id="debug-z"
-        style="position: fixed; bottom: 20px; left: 20px; color: #333; font-family: monospace; font-size: 14px; z-index: 1000; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 4px;">
+        style="position: fixed; bottom: 20px; right: 20px; color: #333; font-family: monospace; font-size: 14px; z-index: 1000; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 4px;">
         Z: 0.00</div>
 
     <div id="ui-layer">
@@ -58,7 +58,41 @@
                 <!-- Content will be injected by JS -->
             </div>
         </div>
+        <!-- Press Prompt Notification -->
+        <div id="press-prompt" class="press-pop">
+            Press That Picture To See Preview Project
+        </div>
     </div>
+
+    <style>
+        .press-pop {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            z-index: 2000;
+
+            /* Fade & Slide Up Animation */
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border-left: 4px solid #B8860B;
+            /* Gold accent */
+        }
+
+        .press-pop.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
 
     <canvas id="three-canvas"></canvas>
 

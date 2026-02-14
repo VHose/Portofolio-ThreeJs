@@ -65,7 +65,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Cap at 1.5 for performance
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.BasicShadowMap; // Performance: Faster shadows
 
 const raycaster = new THREE.Raycaster();
 const clickableObjects = [];
@@ -91,29 +91,8 @@ function addWarmLight(x, y, z) {
 }
 
 // ===== Environment: Grid Floor (Void) =====
-function createGridFloor() {
-    // 1. Grid Helper
-    const gridHelper = new THREE.GridHelper(200, 100, 0x00D4FF, 0x004466);
-    gridHelper.position.y = 0;
-    gridHelper.material.transparent = true;
-    gridHelper.material.opacity = 0.3;
-    scene.add(gridHelper);
-
-    // 2. Reflective Floor Plane (Glass-like)
-    const geometry = new THREE.PlaneGeometry(200, 200);
-    const material = new THREE.MeshStandardMaterial({
-        color: 0x000000,
-        roughness: 0.1,
-        metalness: 0.8,
-        transparent: true,
-        opacity: 0.8
-    });
-    const plane = new THREE.Mesh(geometry, material);
-    plane.rotation.x = -Math.PI / 2;
-    plane.position.y = -0.01;
-    plane.receiveShadow = true;
-    scene.add(plane);
-}
+// ===== Environment: Grid Floor (Void) - Removed per user request
+// function createGridFloor() { ... } deleted
 
 // ===== Chandelier (Scaled Up) =====
 function createChandelier(x, z) {
@@ -204,6 +183,7 @@ function createChandelier(x, z) {
     group.add(targetObj);
     spotlight.target = targetObj;
 
+    spotlight.castShadow = false; // Performance: Disable shadows for decorative lights
     group.add(spotlight);
 
     group.position.set(x, 0, z);
@@ -698,41 +678,7 @@ function createRomanPillar(height) {
 }
 
 // Helper: "Press That Picture" Prompt
-function createPressPrompt(parent) {
-    const group = new THREE.Group();
-    // Position below content initially
-    group.position.set(0, -2.0, 0.2);
-
-    // Background for text visibility
-    const bgGeo = new THREE.PlaneGeometry(3.5, 0.6);
-    const bgMat = new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: true,
-        opacity: 0.7,
-        side: THREE.DoubleSide
-    });
-    const bg = new THREE.Mesh(bgGeo, bgMat);
-    group.add(bg);
-
-    // Text
-    const textMesh = createText("Press That Picture", { fontSize: 0.25, color: 0xFFFFFF, anchorX: 'center' });
-    if (textMesh) {
-        textMesh.position.set(0, 0, 0.05); // Centered on BG
-        group.add(textMesh);
-    }
-
-    // Add to parent
-    parent.add(group);
-
-    // Metadata for animation
-    group.userData = {
-        isPrompt: true,
-        visible: false,
-        slideProgress: 0
-    };
-
-    return group;
-}
+// function createPressPrompt(...) deleted - Moved to HTML UI
 
 // ===== Helpers (createText, createFramedPanel, createIcon, createWallFrame tetap sama) =====
 const loader = new FontLoader();
@@ -1483,7 +1429,7 @@ function createIconFrame(type, url, position, label, sub) {
         const iconMesh = new THREE.Mesh(iconGeo, iconMat);
         iconMesh.position.z = frameD / 2 + 0.07;
         group.add(iconMesh);
-        iconMesh.userData = { url, isInteractive: true };
+        iconMesh.userData = { url, isInteractive: true, type: 'icon' };
         clickableObjects.push(iconMesh);
     });
 
@@ -1503,98 +1449,7 @@ function createIconFrame(type, url, position, label, sub) {
 
     return group;
 }
-
-// ===== Video Project Panel =====
-function createVideoProject(x, y, z, videoPath, title, desc) {
-    const group = new THREE.Group();
-    group.position.set(x, y, z);
-
-    // 1. Create HTML Video Element
-    const video = document.createElement('video');
-    video.src = videoPath;
-    video.crossOrigin = 'anonymous';
-    // Settings for "preview" style (loop, muted)
-    video.loop = true;
-    video.muted = true; // Required for autoplay
-    video.playsInline = true;
-
-    // Attempt to play immediately
-    const playVideo = () => {
-        video.play().catch(e => {
-            console.warn("Autoplay blocked for", videoPath, e);
-        });
-    };
-    playVideo();
-
-    // 2. Create Video Texture
-    const texture = new THREE.VideoTexture(video);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-
-    // 3. Screen Mesh (16:9 Aspect Ratio)
-    // Scaling to fit roughly within 3x2 area
-    const screenWidth = 3.2;
-    const screenHeight = 1.8; // 16:9 ratio
-    const geometry = new THREE.PlaneGeometry(screenWidth, screenHeight);
-
-    // Use MeshBasicMaterial so the video looks "bright" like a screen
-    const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.DoubleSide
-    });
-
-    const screen = new THREE.Mesh(geometry, material);
-    screen.position.z = 0.06; // Slightly protrude from frame
-    group.add(screen);
-
-    // 4. Frame (Monitor Style)
-    const frameW = screenWidth + 0.15;
-    const frameH = screenHeight + 0.15;
-    const frameD = 0.1;
-    const frameMat = new THREE.MeshStandardMaterial({
-        color: 0x1A1A1A, // Dark Grey/Black
-        roughness: 0.2,
-        metalness: 0.6
-    });
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(frameW, frameH, frameD), frameMat);
-    group.add(frame);
-
-    // 5. Title & Description floating below
-    const titleMesh = createText(title, {
-        fontSize: 0.25,
-        color: CONFIG.colors.textHeader,
-        anchorX: 'center'
-    });
-    if (titleMesh) {
-        titleMesh.position.set(0, -screenHeight / 2 - 0.3, 0.05);
-        group.add(titleMesh);
-    }
-
-    if (desc) {
-        const descMesh = createText(desc, {
-            fontSize: 0.15,
-            color: 0x555555,
-            anchorX: 'center'
-        });
-        if (descMesh) {
-            descMesh.position.set(0, -screenHeight / 2 - 0.55, 0.05);
-            group.add(descMesh);
-        }
-    }
-
-    // Interaction Data
-    screen.userData = {
-        isInteractive: true,
-        type: 'video',
-        title: title
-    };
-    clickableObjects.push(screen);
-
-    scene.add(group);
-    state.animatedObjects.push(group);
-    return group;
-}
+// function createVideoProject(...) deleted per optimization request
 
 function buildScene() {
     createRoom();
@@ -1684,57 +1539,57 @@ function buildScene() {
     }
 
     // ===== Detailed Project Panel (Centered with Side Info) =====
-    function createDetailedProject(z, imagePath, youtubeUrl, title, leftInfo, rightInfo) {
+    function createDetailedProject(z, imagePath, youtubeUrl, title, leftInfo, rightInfo, isVertical = false) {
         const group = new THREE.Group();
-        // Center position, higher up (y=5.0)
-        const frameHeightC = 2.36 + 0.2; // roughly 2.56
-        const bottomOfFrame = 5.0 - (frameHeightC / 2); // 5.0 - 1.28 = 3.72
         group.position.set(0, 5.0, z); // Main Group Y=5.0
 
-        // --- 0. ROMAN PILLAR STAND ---
-        // Pillar height needs to reach from floor (y=0) to bottomOfFrame (y=3.72 relative to world, or -1.28 relative to group)
-        // Actually, easier to just add pillar to scene separately OR add to group with correct offset.
-        // Let's add to group. Group is at Y=5.0. Floor is at Y=0. So floor is at local y = -5.0.
-        // Pillar height = 3.72 (bottom of frame). 
-        // Pillar position y (center of pillar) = -5.0 + (3.72 / 2) = -3.14
+        // Dimensions based on Orientation
+        let screenWidth, screenHeight;
+        if (isVertical) {
+            screenWidth = 2.5;  // Narrower
+            screenHeight = 4.45; // Taller (9:16 approx)
+        } else {
+            screenWidth = 4.2;
+            screenHeight = 2.36; // 16:9 ratio
+        }
 
-        const pillarH = 3.72;
+        const frameW = screenWidth + 0.2;
+        const frameH = screenHeight + 0.2;
+
+        // Calculate Pillar Height dynamically
+        // Group Y = 5.0. Floor Y = 0.
+        // Frame Bottom Y (World) = 5.0 - (frameH / 2)
+        // Pillar Height = Frame Bottom Y (since it sits on floor Y=0)
+        const bottomOfFrameWorld = 5.0 - (frameH / 2);
+        const pillarH = Math.max(0.1, bottomOfFrameWorld); // Safety min height
+
+        // --- 0. ROMAN PILLAR STAND ---
         const pillar = createRomanPillar(pillarH);
-        pillar.position.set(0, -5.0, 0); // Base at -5.0 (floor), but createRomanPillar builds UP from 0.
-        // createRomanPillar builds from y=0 up to height.
-        // So putting it at -5.0 means it starts at floor and goes up to -1.28 (just touching frame).
+        pillar.position.set(0, -5.0, 0); // Base at -5.0 (floor relative to group)
         group.add(pillar);
 
-        // --- 1. Central Monitor (Larger) ---
-        // Screen Scale: x1.3 from original (3.2 * 1.3 = ~4.16)
-        const screenWidth = 4.2;
-        const screenHeight = 2.36; // 16:9 ratio
+        // --- 1. Central Monitor ---
         const screenGeo = new THREE.PlaneGeometry(screenWidth, screenHeight);
 
-        // Default Material (Blue = Loading) to be distinct
+        // Default Material (Blue = Loading)
         const placeholderMat = new THREE.MeshBasicMaterial({
-            color: 0x0000AA, // Dark Blue default
+            color: 0x0000AA,
             side: THREE.DoubleSide
         });
 
         const screen = new THREE.Mesh(screenGeo, placeholderMat);
-        screen.position.z = 0.085; // Fix: Move in front of frame (Frame front is ~0.075)
+        screen.position.z = 0.085; // Slightly in front of frame
 
         // Interaction Data
         screen.userData = {
             isInteractive: true,
             type: 'link',
             url: youtubeUrl,
-            title: title
+            title: title,
+            isVertical: isVertical
         };
         clickableObjects.push(screen);
         group.add(screen);
-
-        // "Press That Picture" Prompt (Initially Hidden)
-        const prompt = createPressPrompt(group);
-        // Position relative to screen: Center, Below
-        prompt.position.set(0, -1.8, 0.7); // Moved forward (z=0.7) to avoid clipping with pillar
-        group.userData.prompt = prompt; // Store ref for animation logic
 
         // Add visible "LOADING..." text on the screen
         const loadingText = createText("LOADING...", { fontSize: 0.3, color: 0xFFFFFF, anchorX: 'center' });
@@ -1748,13 +1603,14 @@ function buildScene() {
         textureLoader.load(
             imagePath,
             (texture) => {
-                // Success
                 console.log("Texture loaded successfully:", imagePath);
                 texture.colorSpace = THREE.SRGBColorSpace;
                 texture.minFilter = THREE.LinearFilter;
                 texture.magFilter = THREE.LinearFilter;
 
-                // Create NEW material to ensure clean state
+                // Handle Aspect Ratio / Repeat if needed, but for now Stretch to fit
+                // For vertical, the image should be vertical.
+
                 const newMat = new THREE.MeshBasicMaterial({
                     map: texture,
                     color: 0xffffff,
@@ -1763,38 +1619,22 @@ function buildScene() {
                 screen.material = newMat;
                 screen.material.needsUpdate = true;
 
-                // Remove loading text
-                if (loadingText) {
-                    group.remove(loadingText);
-                    // dispose logic for text mesh/geometry if needed, but group.remove is enough for visual
-                }
+                if (loadingText) group.remove(loadingText);
             },
-            undefined, // onProgress
+            undefined,
             (err) => {
-                // Error
                 console.error("Error loading texture:", imagePath, err);
-
-                // Change to Bright Red
                 screen.material.color.setHex(0xFF0000);
-
-                // Update Loading Text to ERROR
-                if (loadingText) {
-                    group.remove(loadingText); // Remove old one
-                }
-                const errText = createText("ERROR LOADING IMAGE\nCHECK CONSOLE", { fontSize: 0.2, color: 0xFFFFFF, anchorX: 'center' });
-                if (errText) {
-                    errText.position.set(0, 0, 0.1);
-                    group.add(errText);
-                }
+                if (loadingText) group.remove(loadingText);
+                const errText = createText("ERROR\nLOADING", { fontSize: 0.2, color: 0xFFFFFF, anchorX: 'center' });
+                if (errText) { errText.position.set(0, 0, 0.1); group.add(errText); }
             }
         );
 
         // Monitor Frame
-        const frameW = screenWidth + 0.2;
-        const frameH = screenHeight + 0.2;
         const frameD = 0.15;
         const frameMat = new THREE.MeshStandardMaterial({
-            color: 0x1A1A1A, // Dark Grey/Black
+            color: 0x1A1A1A,
             roughness: 0.2,
             metalness: 0.6
         });
@@ -1816,6 +1656,7 @@ function buildScene() {
         // Panel Dimensions
         const panelW = 4.2;
         const panelH = 7.5;
+        // Adjust distance based on screen width
         const panelDist = screenWidth / 2 + panelW / 2 + 0.4;
 
         const infoMat = new THREE.MeshStandardMaterial({
@@ -1827,105 +1668,143 @@ function buildScene() {
             side: THREE.DoubleSide
         });
 
-        // Helper to wrap text
-        function wrapText(text, maxChars) {
-            const words = text.split(' ');
-            let lines = [];
-            let currentLine = words[0];
+        // Helper: Create Text Texture (Canvas) - High Performance
+        function createTextTexture(contentBlocks, width, height) {
+            const canvas = document.createElement('canvas');
+            const w = 1024; // High res canvas width
+            const h = 2048; // High res canvas height
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
 
-            for (let i = 1; i < words.length; i++) {
-                if (currentLine.length + 1 + words[i].length <= maxChars) {
-                    currentLine += ' ' + words[i];
-                } else {
-                    lines.push(currentLine);
-                    currentLine = words[i];
-                }
-            }
-            lines.push(currentLine);
-            return lines;
-        }
+            // Transparent Background
+            ctx.clearRect(0, 0, w, h);
 
-        // Helper to create text lines with auto-wrap AND CENTER ALIGN
-        function createInfoText(contentBlocks, parent) {
-            const maxChars = 45;
+            // Settings
+            const padding = 60;
+            const maxLineWidth = w - (padding * 2);
 
-            // 1. Calculate Layout & Total Height
-            let totalHeight = 0;
-            const layoutItems = [];
+            // 1. Calculate Total Height First
+            let totalContentHeight = 0;
 
-            contentBlocks.forEach((block) => {
+            contentBlocks.forEach(block => {
                 if (!block) {
-                    // Spacer
-                    const h = 0.2;
-                    totalHeight += h;
-                    layoutItems.push({ type: 'spacer', height: h });
+                    totalContentHeight += 80;
+                    return;
+                }
+                const isHeader = block.startsWith('*');
+                const text = isHeader ? block.substring(1) : block;
+                const fontSize = isHeader ? 80 : 48;
+                const fontWeight = isHeader ? 'bold' : 'normal';
+
+                // Set font for measurement
+                ctx.font = `${fontWeight} ${fontSize}px "Segoe UI", Arial, sans-serif`;
+                const lineHeight = fontSize * 1.4;
+
+                const words = text.split(' ');
+                let line = '';
+
+                if (isHeader) {
+                    totalContentHeight += lineHeight + 40;
+                } else {
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        const metrics = ctx.measureText(testLine);
+                        if (metrics.width > maxLineWidth && n > 0) {
+                            line = words[n] + ' ';
+                            totalContentHeight += lineHeight;
+                        } else {
+                            line = testLine;
+                        }
+                    }
+                    totalContentHeight += lineHeight + 20;
+                }
+            });
+
+            // 2. Render from Center
+            let currentY = (h - totalContentHeight) / 2;
+
+            contentBlocks.forEach(block => {
+                if (!block) {
+                    currentY += 80; // Spacer
                     return;
                 }
 
                 const isHeader = block.startsWith('*');
-                const cleanText = isHeader ? block.substring(1) : block;
-                const fontSize = isHeader ? 0.22 : 0.14;
-                const color = isHeader ? 0x2C1810 : 0x333333;
-                const lineHeight = isHeader ? 0.35 : 0.25;
+                const text = isHeader ? block.substring(1) : block;
 
-                const lines = isHeader ? [cleanText] : wrapText(cleanText, maxChars);
+                // Font Style
+                const fontSize = isHeader ? 80 : 48;
+                const fontWeight = isHeader ? 'bold' : 'normal';
+                const color = isHeader ? '#2C1810' : '#333333';
 
-                lines.forEach(line => {
-                    totalHeight += lineHeight;
-                    layoutItems.push({
-                        type: 'text',
-                        text: line,
-                        height: lineHeight,
-                        size: fontSize,
-                        color: color
-                    });
-                });
+                ctx.font = `${fontWeight} ${fontSize}px "Segoe UI", Arial, sans-serif`;
+                ctx.fillStyle = color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+
+                const lineHeight = fontSize * 1.4;
+
+                // Wrapping Logic
+                const words = text.split(' ');
+                let line = '';
 
                 if (isHeader) {
-                    const headerSpace = 0.1;
-                    totalHeight += headerSpace;
-                    layoutItems.push({ type: 'spacer', height: headerSpace });
-                }
-            });
-
-            // 2. Render from Top (StartY = totalHeight / 2)
-            let currentY = totalHeight / 2;
-
-            layoutItems.forEach(item => {
-                // Move cursor to center of this item
-                currentY -= item.height / 2;
-
-                if (item.type === 'text') {
-                    const tMesh = createText(item.text, {
-                        fontSize: item.size,
-                        color: item.color,
-                        anchorX: 'center' // CENTER ALIGN
-                    });
-                    if (tMesh) {
-                        tMesh.position.set(0, currentY, 0.02); // X=0 for center
-                        parent.add(tMesh);
+                    // Header usually single line
+                    ctx.fillText(text, w / 2, currentY);
+                    currentY += lineHeight + 40;
+                } else {
+                    // Body text wrapping
+                    for (let n = 0; n < words.length; n++) {
+                        const testLine = line + words[n] + ' ';
+                        const metrics = ctx.measureText(testLine);
+                        const testWidth = metrics.width;
+                        if (testWidth > maxLineWidth && n > 0) {
+                            ctx.fillText(line, w / 2, currentY);
+                            line = words[n] + ' ';
+                            currentY += lineHeight;
+                        } else {
+                            line = testLine;
+                        }
                     }
+                    ctx.fillText(line, w / 2, currentY); // Draw last line
+                    currentY += lineHeight + 20;
                 }
-
-                // Move cursor past this item
-                currentY -= item.height / 2;
             });
+
+            return new THREE.CanvasTexture(canvas);
         }
+
+        // Common Geometries for Panels
+        // Use taller panel
+        const detailPanelH = panelH;
+        const detailPanelGeo = new THREE.BoxGeometry(panelW, detailPanelH, 0.05);
+        const textPlaneGeo = new THREE.PlaneGeometry(panelW * 0.9, panelH * 0.9);
 
         // -- Left Panel --
         const leftGroup = new THREE.Group();
         leftGroup.position.set(-panelDist, 1.0, 0.5);
         leftGroup.rotation.y = Math.PI / 8;
 
-        // Use taller panel
-        const detailPanelH = panelH;
-        const detailPanelGeo = new THREE.BoxGeometry(panelW, detailPanelH, 0.05);
-
         const leftPanel = new THREE.Mesh(detailPanelGeo, infoMat);
         leftGroup.add(leftPanel);
 
-        // Add content to Left (Centered)
-        createInfoText(leftInfo, leftGroup);
+        // Text Texture for Left
+        const leftTexture = createTextTexture(leftInfo, panelW, panelH);
+        leftTexture.minFilter = THREE.LinearFilter;
+        // Fix color space for correct brightness
+        leftTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const leftTextMat = new THREE.MeshBasicMaterial({
+            map: leftTexture,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        const leftTextPlane = new THREE.Mesh(textPlaneGeo, leftTextMat);
+        leftTextPlane.position.z = 0.03; // Slightly in front
+        leftGroup.add(leftTextPlane);
+
         group.add(leftGroup);
 
 
@@ -1937,8 +1816,21 @@ function buildScene() {
         const rightPanel = new THREE.Mesh(detailPanelGeo, infoMat);
         rightGroup.add(rightPanel);
 
-        // Add content to Right (Centered)
-        createInfoText(rightInfo, rightGroup);
+        // Text Texture for Right
+        const rightTexture = createTextTexture(rightInfo, panelW, panelH);
+        rightTexture.minFilter = THREE.LinearFilter;
+        rightTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const rightTextMat = new THREE.MeshBasicMaterial({
+            map: rightTexture,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        const rightTextPlane = new THREE.Mesh(textPlaneGeo, rightTextMat);
+        rightTextPlane.position.z = 0.03;
+        rightGroup.add(rightTextPlane);
+
         group.add(rightGroup);
 
         scene.add(group);
@@ -1947,10 +1839,10 @@ function buildScene() {
     }
 
 
-    // ===== Section 2: EXPERIENCES (Header -30, Content -42) =====
+    // ===== Section 2: EXPERIENCES (Header -30) =====
     const expZ = -30;
-    const expContentZ = -42; // Deeper
 
+    // We will use Detailed Project format for Experiences as requested
     const expHeader = createText("EXPERIENCES", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (expHeader) {
         expHeader.position.set(0, 7.5, expZ);
@@ -1958,19 +1850,79 @@ function buildScene() {
         state.animatedObjects.push(expHeader);
     }
 
-    createFloatingPanel(-3.5, expContentZ, "WORK", [
-        { title: "Lab Staff GWM", sub: "Internship (2024)", detail: "" },
-        { title: "Teaching Assistant", sub: "Logika & Project Next", detail: "" }
-    ]);
+    // Experience 1: GDG Bandung
+    createDetailedProject(-45, 'assets/img/experiences/gdg.jpg', 'https://www.instagram.com/wpucourse.id?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==', "GDG Bandung",
+        [
+            "*Role",
+            "Sponsorship Division Member",
+            "",
+            "*Overview",
+            "I served in the Sponsorship Division for DevFest 2025 Bandung. My primary focus was securing partnerships."
+        ],
+        [
+            "*Key Event",
+            "DevFest 2025 Bandung",
+            "",
+            "*Partner",
+            "Collaborated with WPU Course.",
+            "",
+            "*Connect",
+            "Web: devfest.gdgbandung.com",
+            "IG: @wpucourse.id"
+        ],
+        true // Vertical
+    );
 
-    createFloatingPanel(3.5, expContentZ, "ORGANIZATIONS", [
-        { title: "Ketua HMIF", sub: "Himpunan Mahasiswa", detail: "" },
-        { title: "Google Ambassador", sub: "2025 - 2026", detail: "" }
-    ]);
+    // Experience 2: HMIF
+    createDetailedProject(-75, 'assets/img/experiences/hmif.jpg', 'https://www.instagram.com/hmif.maranatha?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==', "HMIF Association",
+        [
+            "*Role",
+            "Partnership & Innovation Division Member",
+            "",
+            "*Contribution",
+            "Contributed to departmental activities, from Easter event to the major program ENCORE."
+        ],
+        [
+            "*Versatile Role",
+            "Served as MC, equipment coordinator, and admin.",
+            "",
+            "*Social Media",
+            "IG: @hmif.maranatha"
+        ],
+        true // Vertical
+    );
+
+    // Experience 3: UKOR
+    createDetailedProject(-105, 'assets/img/experiences/ukor.jpg', 'https://www.instagram.com/ukormaranatha?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==', "UKOR Sports Unit",
+        [
+            "*Role",
+            "E-Sport Cabinet Member (Free Fire)",
+            "",
+            "*Focus",
+            "Managed Free Fire division and organized campus sports events."
+        ],
+        [
+            "*Timeline",
+            "Organized POM (Sports Week) and ICONIC orientation.",
+            "",
+            "*Social Media",
+            "IG: @ukormaranatha"
+        ],
+        true // Vertical
+    );
+
+    // Coming Soon for Experiences
+    const expComingSoon = createText("Coming Soon...", { fontSize: 0.5, color: 0x888888, anchorX: 'center' });
+    if (expComingSoon) {
+        expComingSoon.position.set(0, 5.0, -125); // Between UKOR (-105) and Projects (-145)
+        scene.add(expComingSoon);
+        state.animatedObjects.push(expComingSoon);
+    }
 
 
-    // ===== Section 3: PROJECTS (Header -70) =====
-    const projZ = -70;
+    // ===== Section 3: PROJECTS (Header -145) =====
+    // Shifted back to accommodate 3 experiences
+    const projZ = -145;
 
     const projHeader = createText("PROJECTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (projHeader) {
@@ -1979,10 +1931,8 @@ function buildScene() {
         state.animatedObjects.push(projHeader);
     }
 
-
-
-    // 1. PetShop (Center Z=-90)
-    createDetailedProject(-90, 'assets/img/projects/petshop.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-5tPR69BEtZI-CuXKx866yf', "PetShop: E-Commerce",
+    // 1. PetShop
+    createDetailedProject(projZ - 15, 'assets/img/projects/petshop.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-5tPR69BEtZI-CuXKx866yf', "PetShop: E-Commerce",
         [
             "*Description",
             "This is a complete e-commerce platform designed to handle the shopping journey for users and a deep management system for administrators.",
@@ -2005,8 +1955,8 @@ function buildScene() {
         ]
     );
 
-    // 2. SYC 2025 (Center Z=-120)
-    createDetailedProject(-120, 'assets/img/projects/syc2025.jpg', 'https://youtu.be/9l-27PN-bSY', "SYC 2025 Event Page",
+    // 2. SYC 2025
+    createDetailedProject(projZ - 45, 'assets/img/projects/syc2025.jpg', 'https://youtu.be/9l-27PN-bSY', "SYC 2025 Event Page",
         [
             "*Event Showcase",
             "This was a project for the 'Redeemed' group during the SYC 2025 event. It serves as a visual record of the group's activities and photos, focusing on a clean layout to display event documentation.",
@@ -2023,8 +1973,8 @@ function buildScene() {
         ]
     );
 
-    // 3. Library Management (Center Z=-150)
-    createDetailedProject(-150, 'assets/img/projects/library.jpg', 'https://youtu.be/9_cRlZKAcDk', "Library Management",
+    // 3. Library Management
+    createDetailedProject(projZ - 75, 'assets/img/projects/library.jpg', 'https://youtu.be/9_cRlZKAcDk', "Library Management",
         [
             "*Overview",
             "I built this program to manage book transactions in a library. It allows people to browse the catalog, borrow or return books, and suggest new titles for the library to acquire.",
@@ -2038,8 +1988,8 @@ function buildScene() {
         ]
     );
 
-    // 4. Mexican Culinary (Center Z=-180)
-    createDetailedProject(-180, 'assets/img/projects/mexican.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-4Edm7wwWaKG9P_k0382oND', "Mexican Culinary",
+    // 4. Mexican Culinary
+    createDetailedProject(projZ - 105, 'assets/img/projects/mexican.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-4Edm7wwWaKG9P_k0382oND', "Mexican Culinary",
         [
             "*Educational Project",
             "This educational project introduces users to the culinary traditions of Mexico. I used a basic JSON structure to organize and present data about different Mexican dishes to the audience.",
@@ -2053,8 +2003,8 @@ function buildScene() {
         ]
     );
 
-    // 5. Catch the Food (Center Z=-210)
-    createDetailedProject(-210, 'assets/img/projects/game.jpg', 'https://youtu.be/GoYq0F8fHiA', "Catch the Food",
+    // 5. Catch the Food
+    createDetailedProject(projZ - 135, 'assets/img/projects/game.jpg', 'https://youtu.be/GoYq0F8fHiA', "Catch the Food",
         [
             "*Game Title",
             "This is a simple arcade game inspired by the mechanics of the game Pou. Players control a character to catch traditional Mexican food while trying to avoid falling bombs that end the game.",
@@ -2068,10 +2018,18 @@ function buildScene() {
         ]
     );
 
-    // ===== Section 4: ACHIEVEMENTS (Header -250) =====
+    // Coming Soon for Projects
+    const projComingSoon = createText("Coming Soon...", { fontSize: 0.5, color: 0x888888, anchorX: 'center' });
+    if (projComingSoon) {
+        projComingSoon.position.set(0, 5.0, projZ - 155); // After Last Project (-280) -> -300
+        scene.add(projComingSoon);
+        state.animatedObjects.push(projComingSoon);
+    }
+
+    // ===== Section 4: ACHIEVEMENTS (Header -320) =====
     // Pushed back significantly
-    const achZ = -250;
-    const achContentZ = -262;
+    const achZ = -320;
+    const achContentZ = -332;
 
     const achHeader = createText("ACHIEVEMENTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (achHeader) {
@@ -2099,7 +2057,7 @@ function buildScene() {
 
 
     // ===== Section 5: CONTACT (At the end) =====
-    const endZ = -290; // Near wall at -300
+    const endZ = -349; // Near wall at -350
 
     const contactGroup = new THREE.Group();
     contactGroup.position.set(0, 5.0, endZ);
@@ -2156,6 +2114,7 @@ function buildScene() {
     createChandelier(0, -180);
     createChandelier(0, -230);
     createChandelier(0, -280);
+    createChandelier(0, -330);
 }
 
 // ===== Initial Load & Animate =====
@@ -2205,7 +2164,7 @@ loader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/optimer_b
             clearInterval(finishInterval);
 
             // Warm Lights
-            for (let z = -10; z > -300; z -= 15) {
+            for (let z = -10; z > -350; z -= 15) {
                 addWarmLight(0, CONFIG.room.height - 0.5, z);
             }
 
@@ -2240,9 +2199,9 @@ document.querySelectorAll('#main-nav a').forEach(link => {
         switch (target) {
             case 'entrance': zTarget = 8; break;
             case 'experiences': zTarget = -22; break;   // Header at -30
-            case 'projects': zTarget = -65; break;      // Header at -70
-            case 'achievements': zTarget = -242; break; // Header at -250
-            case 'contact': zTarget = -285; break;      // End of room (View wall at -300)
+            case 'projects': zTarget = -140; break;      // Header at -145
+            case 'achievements': zTarget = -315; break; // Header at -320
+            case 'contact': zTarget = -342; break;      // End of room (View wall at -350)
         }
         state.scrollTarget = zTarget;
     });
@@ -2261,8 +2220,8 @@ function onWheel(event) {
 
     // Clamp scroll
     // StartZ = 8
-    // EndZ = -285 (Contact Wall View)
-    state.scrollTarget = Math.max(-285, Math.min(8, state.scrollTarget));
+    // EndZ = -342 (Contact Wall View)
+    state.scrollTarget = Math.max(-342, Math.min(8, state.scrollTarget));
 }
 
 function onMouseMove(event) {
@@ -2307,7 +2266,7 @@ window.addEventListener('click', onClick);
 
 // Add dynamic spotlight to scene
 const followSpot = new THREE.SpotLight(0xFFF8DC, 2.0, 40, Math.PI / 4, 0.5, 1);
-followSpot.castShadow = true;
+followSpot.castShadow = false; // Performance: Disable dynamic shadows which kill FPS
 scene.add(followSpot);
 const followSpotTarget = new THREE.Object3D();
 scene.add(followSpotTarget);
@@ -2344,52 +2303,51 @@ function animate() {
     const promptDistThreshold = 15; // Distance to show prompt
     const renderLimit = 45; // Max distance to render heavy objects
 
+    // A. Efficiency Loop: Culling
     state.animatedObjects.forEach(obj => {
         const dist = Math.abs(camera.position.z - obj.position.z);
-
-        // A. Render Culling (Performance Fix)
         if (dist > renderLimit) {
             obj.visible = false;
-            // Skip further logic for this object if hidden
-            return;
         } else {
             obj.visible = true;
         }
-
-        // B. Prompt Logic (Slide "Press That Picture")
-        if (obj.userData && obj.userData.prompt) {
-            const prompt = obj.userData.prompt;
-
-            // Logic: If close -> Slide In. If far -> Slide Out.
-            if (dist < promptDistThreshold) {
-                // Animate In
-                prompt.userData.slideProgress = THREE.MathUtils.lerp(prompt.userData.slideProgress, 1, 0.1);
-            } else {
-                // Animate Out
-                prompt.userData.slideProgress = THREE.MathUtils.lerp(prompt.userData.slideProgress, 0, 0.1);
-            }
-
-            // Apply Slide (Vertical Slide Up)
-            // Start Y: -2.0 (hidden below). Target Y: -1.4 (visible just under screen).
-
-            const startY = -2.0;
-            const endY = -1.4;
-            const currentY = THREE.MathUtils.lerp(startY, endY, prompt.userData.slideProgress);
-
-            prompt.position.y = currentY;
-            prompt.position.x = 0; // Centered horizontally
-
-            // Opacity
-            const opacity = prompt.userData.slideProgress;
-            prompt.traverse(child => {
-                if (child.material) {
-                    child.material.opacity = opacity * 0.8; // Max 0.8
-                    child.material.transparent = true;
-                    child.visible = opacity > 0.01;
-                }
-            });
-        }
     });
+
+    // B. HTML Prompt Logic (Run once per frame)
+    const interactibles = clickableObjects.filter(o => o.userData.isInteractive && o.userData.url);
+    let nearby = false;
+
+    // Check nearest
+    let closestDist = Infinity;
+    let closestObj = null;
+
+    for (let io of interactibles) {
+        const worldPos = new THREE.Vector3();
+        io.getWorldPosition(worldPos);
+        const d = Math.abs(camera.position.z - worldPos.z);
+        if (d < promptDistThreshold && d < closestDist) {
+            closestDist = d;
+            closestObj = io;
+        }
+    }
+
+    if (closestObj) nearby = true;
+
+    const promptEl = document.getElementById('press-prompt');
+    if (promptEl) {
+        if (nearby && closestObj) {
+            promptEl.classList.add('show');
+            if (closestObj.userData.type === 'icon') {
+                promptEl.innerText = "Press Icon To Connect";
+            } else if (closestObj.userData.isVertical) {
+                promptEl.innerText = "Press That Picture To See Preview Experience";
+            } else {
+                promptEl.innerText = "Press That Picture To See Preview Project";
+            }
+        } else {
+            promptEl.classList.remove('show');
+        }
+    }
 
     // DEBUG: Update Z Position Display
     const debugZ = document.getElementById('debug-z');
