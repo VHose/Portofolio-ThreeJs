@@ -23,7 +23,7 @@ const CONFIG = {
     room: {
         width: 30,
         height: 10,
-        length: 300 // Extended for detailed spaced out layout
+        length: 502 // Extended for detailed spaced out layout
     },
     scroll: {
         damp: 0.08,
@@ -1539,15 +1539,15 @@ function buildScene() {
     }
 
     // ===== Detailed Project Panel (Centered with Side Info) =====
-    function createDetailedProject(z, imagePath, youtubeUrl, title, leftInfo, rightInfo, isVertical = false) {
+    function createDetailedProject(z, imagePath, youtubeUrl, title, leftInfo, rightInfo, isVertical = false, sectionType = 'Project') {
         const group = new THREE.Group();
         group.position.set(0, 5.0, z); // Main Group Y=5.0
 
         // Dimensions based on Orientation
         let screenWidth, screenHeight;
         if (isVertical) {
-            screenWidth = 2.5;  // Narrower
-            screenHeight = 4.45; // Taller (9:16 approx)
+            screenWidth = 3.0;  // Wider (was 2.5)
+            screenHeight = 5.34; // Taller (16:9 inverted approx is 9:16)
         } else {
             screenWidth = 4.2;
             screenHeight = 2.36; // 16:9 ratio
@@ -1586,7 +1586,8 @@ function buildScene() {
             type: 'link',
             url: youtubeUrl,
             title: title,
-            isVertical: isVertical
+            isVertical: isVertical,
+            sectionType: sectionType // 'Experience', 'Project', 'Achievement'
         };
         clickableObjects.push(screen);
         group.add(screen);
@@ -1648,7 +1649,7 @@ function buildScene() {
             anchorX: 'center'
         });
         if (titleMesh) {
-            titleMesh.position.set(0, frameH / 2 + 0.5, 0);
+            titleMesh.position.set(0, frameH / 2 + 1.2, 0);
             group.add(titleMesh);
         }
 
@@ -1870,7 +1871,8 @@ function buildScene() {
             "Web: devfest.gdgbandung.com",
             "IG: @wpucourse.id"
         ],
-        true // Vertical
+        true, // Vertical
+        'Experience'
     );
 
     // Experience 2: HMIF
@@ -1889,7 +1891,8 @@ function buildScene() {
             "*Social Media",
             "IG: @hmif.maranatha"
         ],
-        true // Vertical
+        true, // Vertical
+        'Experience'
     );
 
     // Experience 3: UKOR
@@ -1908,7 +1911,8 @@ function buildScene() {
             "*Social Media",
             "IG: @ukormaranatha"
         ],
-        true // Vertical
+        true, // Vertical
+        'Experience'
     );
 
     // Coming Soon for Experiences
@@ -2027,9 +2031,7 @@ function buildScene() {
     }
 
     // ===== Section 4: ACHIEVEMENTS (Header -320) =====
-    // Pushed back significantly
     const achZ = -320;
-    const achContentZ = -332;
 
     const achHeader = createText("ACHIEVEMENTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (achHeader) {
@@ -2038,27 +2040,85 @@ function buildScene() {
         state.animatedObjects.push(achHeader);
     }
 
-    // Trophy / Models placeholders
-    const tGroup = new THREE.Group();
-    tGroup.position.set(0, 3, achContentZ);
+    // 1. Google Student Ambassador (GSA)
+    createDetailedProject(achZ - 30, 'assets/img/achievements/gsa.jpg', 'https://www.instagram.com/p/DUa1RL1EhPU/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==', "Google Student\nAmbassador",
+        [
+            "*Duration",
+            "September – February (6 Months)",
+            "",
+            "*Institution",
+            "Maranatha Christian University"
+        ],
+        [
+            "*Role",
+            "I represented Google on campus by exploring various developer tools and introducing Google Gemini to the student community. My role involved creating engaging content to make complex technology more accessible and fun for my peers."
+        ],
+        true, // Vertical
+        'Achievement'
+    );
 
-    // Golden Cube as placeholder trophy
-    const trophyGeo = new THREE.BoxGeometry(1, 1.5, 1);
-    const trophyMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 1.0, roughness: 0.2 });
-    const trophy = new THREE.Mesh(trophyGeo, trophyMat);
-    trophy.rotation.y = Math.PI / 4;
-    tGroup.add(trophy);
+    // 2. Outstanding Dean's List Award
+    createDetailedProject(achZ - 60, 'assets/img/achievements/dean.jpg', 'https://www.instagram.com/p/DQy30FKklbh/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==', "Outstanding\nDean's List",
+        [
+            "*Awarded",
+            "Semester 2, Informatics Engineering",
+            "",
+            "*GPA",
+            "4.00 (Perfect Score)"
+        ],
+        [
+            "*Achievement",
+            "I received the 'Outstanding Dean's List' recognition for maintaining academic excellence alongside heavy involvement in non-academic activities. I achieved a perfect GPA (IPS) of 4.00 during this period."
+        ],
+        true, // Vertical
+        'Achievement'
+    );
 
-    const tText = createText("1st Place Hackathon", { fontSize: 0.3, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (tText) { tText.position.set(0, -1.2, 0); tGroup.add(tText); }
+    // 3. Maranatha Quiz Competition (LMC)
+    createDetailedProject(achZ - 90, 'assets/img/achievements/lmc.jpg', 'https://www.instagram.com/p/DQMSbUmEtIX/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==', "Maranatha Quiz\nCompetition",
+        [
+            "*Result",
+            "2nd Place",
+            "",
+            "*Focus",
+            "Indonesian Culture and History"
+        ],
+        [
+            "*Details",
+            "The event was highly competitive, especially during the semi-final rounds where we had to demonstrate specific skills under pressure."
+        ],
+        true, // Vertical
+        'Achievement'
+    );
 
-    scene.add(tGroup);
-    state.animatedObjects.push(tGroup);
+    // 4. Model Student Award (Siswa Teladan)
+    createDetailedProject(achZ - 120, 'assets/img/achievements/model.jpg', 'https://www.instagram.com/p/C9cwCSoSXLd/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==', "Model Student Award",
+        [
+            "*Batch",
+            "28, SMAK Kalam Kudus Bandung",
+            "",
+            "*Significance",
+            "High School Graduation Honor"
+        ],
+        [
+            "*Reflection",
+            "I was honored with the Model Student award for my graduating class. While it felt like a bit of good luck at the time, it remains a proud milestone in my journey toward informatics."
+        ],
+        true, // Vertical
+        'Achievement'
+    );
+
+    // Coming Soon for Achievements
+    const achComingSoon = createText("Coming Soon...", { fontSize: 0.5, color: 0x888888, anchorX: 'center' });
+    if (achComingSoon) {
+        achComingSoon.position.set(0, 5.0, achZ - 150);
+        scene.add(achComingSoon);
+        state.animatedObjects.push(achComingSoon);
+    }
 
 
     // ===== Section 5: CONTACT (At the end) =====
-    const endZ = -349; // Near wall at -350
-
+    const endZ = -500; // Near wall at -510
     const contactGroup = new THREE.Group();
     contactGroup.position.set(0, 5.0, endZ);
     scene.add(contactGroup);
@@ -2115,6 +2175,9 @@ function buildScene() {
     createChandelier(0, -230);
     createChandelier(0, -280);
     createChandelier(0, -330);
+    createChandelier(0, -380);
+    createChandelier(0, -430);
+    createChandelier(0, -480);
 }
 
 // ===== Initial Load & Animate =====
@@ -2131,7 +2194,7 @@ const loadInterval = setInterval(() => {
         if (loadProgress > 90) loadProgress = 90;
         if (loaderText) loaderText.innerText = loadProgress + '%';
     }
-}, 30); // Update every 30ms
+}, 50); // Update every 50ms (Slower)
 
 // Load Font (Actual Asset)
 console.time("FontLoad");
@@ -2153,6 +2216,7 @@ loader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/optimer_b
     // Asset Loaded: Push to 100%
     clearInterval(loadInterval);
     loadProgress = 90;
+    if (loaderText) loaderText.innerText = loadProgress + '%';
 
     // Finish animation
     const finishInterval = setInterval(() => {
@@ -2164,7 +2228,7 @@ loader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/optimer_b
             clearInterval(finishInterval);
 
             // Warm Lights
-            for (let z = -10; z > -350; z -= 15) {
+            for (let z = -10; z > -510; z -= 15) {
                 addWarmLight(0, CONFIG.room.height - 0.5, z);
             }
 
@@ -2201,7 +2265,7 @@ document.querySelectorAll('#main-nav a').forEach(link => {
             case 'experiences': zTarget = -22; break;   // Header at -30
             case 'projects': zTarget = -140; break;      // Header at -145
             case 'achievements': zTarget = -315; break; // Header at -320
-            case 'contact': zTarget = -342; break;      // End of room (View wall at -350)
+            case 'contact': zTarget = -485; break;      // End of room (View wall at -500/510)
         }
         state.scrollTarget = zTarget;
     });
@@ -2220,8 +2284,8 @@ function onWheel(event) {
 
     // Clamp scroll
     // StartZ = 8
-    // EndZ = -342 (Contact Wall View)
-    state.scrollTarget = Math.max(-342, Math.min(8, state.scrollTarget));
+    // EndZ = -495 (Contact Wall View)
+    state.scrollTarget = Math.max(-495, Math.min(8, state.scrollTarget));
 }
 
 function onMouseMove(event) {
@@ -2340,7 +2404,11 @@ function animate() {
             if (closestObj.userData.type === 'icon') {
                 promptEl.innerText = "Press Icon To Connect";
             } else if (closestObj.userData.isVertical) {
-                promptEl.innerText = "Press That Picture To See Preview Experience";
+                if (closestObj.userData.sectionType === 'Experience') {
+                    promptEl.innerText = "Press That Picture To See Preview Experience";
+                } else {
+                    promptEl.innerText = "Press That Picture To See Preview Achievement";
+                }
             } else {
                 promptEl.innerText = "Press That Picture To See Preview Project";
             }
