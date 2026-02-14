@@ -23,7 +23,7 @@ const CONFIG = {
     room: {
         width: 30,
         height: 10,
-        length: 200 // Extended for spaced out layout
+        length: 300 // Extended for detailed spaced out layout
     },
     scroll: {
         damp: 0.08,
@@ -1373,6 +1373,98 @@ function createIconFrame(type, url, position, label, sub) {
     return group;
 }
 
+// ===== Video Project Panel =====
+function createVideoProject(x, y, z, videoPath, title, desc) {
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+
+    // 1. Create HTML Video Element
+    const video = document.createElement('video');
+    video.src = videoPath;
+    video.crossOrigin = 'anonymous';
+    // Settings for "preview" style (loop, muted)
+    video.loop = true;
+    video.muted = true; // Required for autoplay
+    video.playsInline = true;
+
+    // Attempt to play immediately
+    const playVideo = () => {
+        video.play().catch(e => {
+            console.warn("Autoplay blocked for", videoPath, e);
+        });
+    };
+    playVideo();
+
+    // 2. Create Video Texture
+    const texture = new THREE.VideoTexture(video);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+
+    // 3. Screen Mesh (16:9 Aspect Ratio)
+    // Scaling to fit roughly within 3x2 area
+    const screenWidth = 3.2;
+    const screenHeight = 1.8; // 16:9 ratio
+    const geometry = new THREE.PlaneGeometry(screenWidth, screenHeight);
+
+    // Use MeshBasicMaterial so the video looks "bright" like a screen
+    const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide
+    });
+
+    const screen = new THREE.Mesh(geometry, material);
+    screen.position.z = 0.06; // Slightly protrude from frame
+    group.add(screen);
+
+    // 4. Frame (Monitor Style)
+    const frameW = screenWidth + 0.15;
+    const frameH = screenHeight + 0.15;
+    const frameD = 0.1;
+    const frameMat = new THREE.MeshStandardMaterial({
+        color: 0x1A1A1A, // Dark Grey/Black
+        roughness: 0.2,
+        metalness: 0.6
+    });
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(frameW, frameH, frameD), frameMat);
+    group.add(frame);
+
+    // 5. Title & Description floating below
+    const titleMesh = createText(title, {
+        fontSize: 0.25,
+        color: CONFIG.colors.textHeader,
+        anchorX: 'center'
+    });
+    if (titleMesh) {
+        titleMesh.position.set(0, -screenHeight / 2 - 0.3, 0.05);
+        group.add(titleMesh);
+    }
+
+    if (desc) {
+        const descMesh = createText(desc, {
+            fontSize: 0.15,
+            color: 0x555555,
+            anchorX: 'center'
+        });
+        if (descMesh) {
+            descMesh.position.set(0, -screenHeight / 2 - 0.55, 0.05);
+            group.add(descMesh);
+        }
+    }
+
+    // Interaction Data
+    screen.userData = {
+        isInteractive: true,
+        type: 'video',
+        title: title
+    };
+    clickableObjects.push(screen);
+
+    scene.add(group);
+    state.animatedObjects.push(group);
+    return group;
+}
+
 function buildScene() {
     createRoom();
 
@@ -1460,6 +1552,136 @@ function buildScene() {
         state.animatedObjects.push(group); // Track
     }
 
+    // ===== Detailed Project Panel (Centered with Side Info) =====
+    function createDetailedProject(z, imagePath, youtubeUrl, title, leftInfo, rightInfo) {
+        const group = new THREE.Group();
+        // Center position, higher up (y=5.0)
+        group.position.set(0, 5.0, z);
+
+        // --- 1. Central Monitor (Larger) ---
+        // Screen Scale: x1.3 from original (3.2 * 1.3 = ~4.16)
+        const screenWidth = 4.2;
+        const screenHeight = 2.36; // 16:9 ratio
+        const screenGeo = new THREE.PlaneGeometry(screenWidth, screenHeight);
+
+        // Load Image Texture
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(imagePath, (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+
+            // Use MeshBasicMaterial so the image looks "bright" like a screen
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                side: THREE.DoubleSide
+            });
+            const screen = new THREE.Mesh(screenGeo, material);
+            screen.position.z = 0.06; // Slightly protrude from frame
+
+            // Interaction Data for Monitor
+            screen.userData = {
+                isInteractive: true,
+                type: 'link',
+                url: youtubeUrl,
+                title: title
+            };
+            clickableObjects.push(screen);
+
+            group.add(screen);
+        });
+
+        // Monitor Frame
+        const frameW = screenWidth + 0.2;
+        const frameH = screenHeight + 0.2;
+        const frameD = 0.15;
+        const frameMat = new THREE.MeshStandardMaterial({
+            color: 0x1A1A1A, // Dark Grey/Black
+            roughness: 0.2,
+            metalness: 0.6
+        });
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(frameW, frameH, frameD), frameMat);
+        group.add(frame);
+
+        // Title (Floating above monitor)
+        const titleMesh = createText(title, {
+            fontSize: 0.35,
+            color: CONFIG.colors.textHeader,
+            anchorX: 'center'
+        });
+        if (titleMesh) {
+            titleMesh.position.set(0, frameH / 2 + 0.5, 0);
+            group.add(titleMesh);
+        }
+
+        // --- 2. Side Panels (Glass/Paper Style) ---
+        // Panel Dimensions
+        const panelW = 3.5;
+        const panelH = 3.0; // Slightly smaller than monitor
+        const panelDist = screenWidth / 2 + panelW / 2 + 0.5; // Distance from center
+
+        const infoMat = new THREE.MeshStandardMaterial({
+            color: 0xFFFAF0, // Cream paper
+            roughness: 0.4,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 0.95,
+            side: THREE.DoubleSide
+        });
+
+        // Helper to create text lines
+        function createInfoText(lines, startY, parent) {
+            let y = startY;
+            lines.forEach((line) => {
+                // Check if header (starts with *) or normal text
+                const isHeader = line.startsWith('*');
+                const txt = isHeader ? line.substring(1) : line;
+                const size = isHeader ? 0.18 : 0.14; // Tuned size
+                const color = isHeader ? 0x2C1810 : 0x333333; // Header dark, Body grey
+
+                // Simple text creation
+                const tMesh = createText(txt, { fontSize: size, color: color, anchorX: 'left' });
+                if (tMesh) {
+                    // Determine width roughly to center or justify? No, just left align
+                    // Offset x to start at left of panel
+                    tMesh.position.set(-panelW / 2 + 0.2, y, 0.02);
+                    parent.add(tMesh);
+                }
+                y -= (isHeader ? 0.4 : 0.25);
+            });
+        }
+
+        // -- Left Panel (Technical) --
+        // Angled inward
+        const leftGroup = new THREE.Group();
+        leftGroup.position.set(-panelDist, 0, 0.5);
+        leftGroup.rotation.y = Math.PI / 8; // Face user
+
+        const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, panelH, 0.05), infoMat);
+        leftGroup.add(leftPanel);
+
+        // Add content to Left (Start from top)
+        createInfoText(leftInfo, panelH / 2 - 0.4, leftGroup);
+        group.add(leftGroup);
+
+
+        // -- Right Panel (Features/Impact) --
+        const rightGroup = new THREE.Group();
+        rightGroup.position.set(panelDist, 0, 0.5);
+        rightGroup.rotation.y = -Math.PI / 8; // Face user
+
+        const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, panelH, 0.05), infoMat);
+        rightGroup.add(rightPanel);
+
+        // Add content to Right
+        createInfoText(rightInfo, panelH / 2 - 0.4, rightGroup);
+        group.add(rightGroup);
+
+        scene.add(group);
+        state.animatedObjects.push(group);
+        return group;
+    }
+
     // ===== Section 2: EXPERIENCES (Header -30, Content -42) =====
     const expZ = -30;
     const expContentZ = -42; // Deeper
@@ -1481,9 +1703,8 @@ function buildScene() {
         { title: "Google Ambassador", sub: "2025 - 2026", detail: "" }
     ]);
 
-    // ===== Section 3: PROJECTS (Header -70, Content -82) =====
-    const projZ = -70; // Moved further back
-    const projContentZ = -82;
+    // ===== Section 3: PROJECTS (Header -70) =====
+    const projZ = -70;
 
     const projHeader = createText("PROJECTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (projHeader) {
@@ -1492,33 +1713,42 @@ function buildScene() {
         state.animatedObjects.push(projHeader);
     }
 
-    // Project 1
-    const p1 = createFramedPanel(3, 2);
-    p1.position.set(-4, 4, projContentZ);
-    scene.add(p1);
-    state.animatedObjects.push(p1);
-    const t1 = createText("AI AGENT", { fontSize: 0.4, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (t1) { t1.position.set(0, 0, 0.1); p1.add(t1); }
 
-    // Project 2
-    const p2 = createFramedPanel(3, 2);
-    p2.position.set(0, 4, projContentZ);
-    scene.add(p2);
-    state.animatedObjects.push(p2);
-    const t2 = createText("3D WEBSITE", { fontSize: 0.4, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (t2) { t2.position.set(0, 0, 0.1); p2.add(t2); }
 
-    // Project 3
-    const p3 = createFramedPanel(3, 2);
-    p3.position.set(4, 4, projContentZ);
-    scene.add(p3);
-    state.animatedObjects.push(p3);
-    const t3 = createText("IOT SYSTEM", { fontSize: 0.4, color: CONFIG.colors.textHeader, anchorX: 'center' });
-    if (t3) { t3.position.set(0, 0, 0.1); p3.add(t3); }
+    // 1. PetShop (Center Z=-90)
+    createDetailedProject(-90, 'assets/img/projects/petshop.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-5tPR69BEtZI-CuXKx866yf', "PetShop: E-Commerce",
+        ["*Tech Stack", "Laravel, React, MySQL", "", "*System Planning", "16 Entities, 20 Classes", "54 Diagrams"],
+        ["*Customer Features", "Search, Ratings, Cart", "Secure OTP Login", "", "*Admin Features", "Stock Tracking", "Sales Statistics"]
+    );
 
-    // ===== Section 4: ACHIEVEMENTS (Header -110, Content -122) =====
-    const achZ = -110;
-    const achContentZ = -122;
+    // 2. SYC 2025 (Center Z=-120)
+    createDetailedProject(-120, 'assets/img/projects/syc2025.jpg', 'https://youtu.be/9l-27PN-bSY', "SYC 2025 Event Page",
+        ["*Tech Stack", "HTML, Tailwind CSS", "", "*Purpose", "Document Activities", "Event Documentation"],
+        ["*Key Features", "Clean Gallery", "Responsive Design", "Photo Showcase", "Modern Layout"]
+    );
+
+    // 3. Library Management (Center Z=-150)
+    createDetailedProject(-150, 'assets/img/projects/library.jpg', 'https://youtu.be/9_cRlZKAcDk', "Library Management",
+        ["*Tech Stack", "Python, Pandas", "", "*Type", "Data-Driven App", "Console/GUI"],
+        ["*Core Features", "Browse Collection", "Borrow & Return", "Book Suggestions", "Transaction Logs"]
+    );
+
+    // 4. Mexican Culinary (Center Z=-180)
+    createDetailedProject(-180, 'assets/img/projects/mexican.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-4Edm7wwWaKG9P_k0382oND', "Mexican Culinary",
+        ["*Tech Stack", "HTML, CSS, JS", "JSON Data Storage", "", "*Category", "Educational Web"],
+        ["*Highlights", "Dynamic Data Loading", "Cultural Showcase", "Interactive Menu", "Rich Visuals"]
+    );
+
+    // 5. Catch the Food (Center Z=-210)
+    createDetailedProject(-210, 'assets/img/projects/game.jpg', 'https://youtu.be/GoYq0F8fHiA', "Catch the Food",
+        ["*Tech Stack", "JavaScript, HTML", "Canvas API", "", "*Genre", "Arcade / Casual"],
+        ["*Gameplay", "Pou-style Catching", "Avoid Bombs", "High Score System", "Interactive Controls"]
+    );
+
+    // ===== Section 4: ACHIEVEMENTS (Header -250) =====
+    // Pushed back significantly
+    const achZ = -250;
+    const achContentZ = -262;
 
     const achHeader = createText("ACHIEVEMENTS", { fontSize: 0.8, color: CONFIG.colors.accent, anchorX: 'center' });
     if (achHeader) {
@@ -1545,8 +1775,8 @@ function buildScene() {
     state.animatedObjects.push(tGroup);
 
 
-    // ===== Section 5: CONTACT (Image 2 Aesthetic) =====
-    const endZ = -198; // Just in front of the back wall (-200)
+    // ===== Section 5: CONTACT (At the end) =====
+    const endZ = -290; // Near wall at -300
 
     const contactGroup = new THREE.Group();
     contactGroup.position.set(0, 5.0, endZ);
@@ -1596,13 +1826,13 @@ function buildScene() {
 
 
 
-    // Decor & Lighting — 3 chandeliers (Restored - Spaced out)
-    // Adjust positions to match new length
+    // Decor & Lighting — Chandeliers (Spaced out)
     createChandelier(0, -30);
-    createChandelier(0, -70);
-    createChandelier(0, -110);
-    createChandelier(0, -150);
+    createChandelier(0, -80);
+    createChandelier(0, -130);
     createChandelier(0, -180);
+    createChandelier(0, -230);
+    createChandelier(0, -280);
 }
 
 // ===== Initial Load & Animate =====
@@ -1652,7 +1882,7 @@ loader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/optimer_b
             clearInterval(finishInterval);
 
             // Warm Lights
-            for (let z = -10; z > -200; z -= 15) {
+            for (let z = -10; z > -300; z -= 15) {
                 addWarmLight(0, CONFIG.room.height - 0.5, z);
             }
 
@@ -1686,10 +1916,10 @@ document.querySelectorAll('#main-nav a').forEach(link => {
         // Adjusted targets for new spacious layout
         switch (target) {
             case 'entrance': zTarget = 8; break;
-            case 'experiences': zTarget = -22; break;   // Header at -30, view from -22
-            case 'projects': zTarget = -62; break;      // Header at -70, view from -62
-            case 'achievements': zTarget = -102; break; // Header at -110, view from -102
-            case 'contact': zTarget = -185; break;      // End of room (View wall at -200)
+            case 'experiences': zTarget = -22; break;   // Header at -30
+            case 'projects': zTarget = -65; break;      // Header at -70
+            case 'achievements': zTarget = -242; break; // Header at -250
+            case 'contact': zTarget = -285; break;      // End of room (View wall at -300)
         }
         state.scrollTarget = zTarget;
     });
@@ -1708,8 +1938,8 @@ function onWheel(event) {
 
     // Clamp scroll
     // StartZ = 8
-    // EndZ = -185 (Contact Wall View)
-    state.scrollTarget = Math.max(-185, Math.min(8, state.scrollTarget));
+    // EndZ = -285 (Contact Wall View)
+    state.scrollTarget = Math.max(-285, Math.min(8, state.scrollTarget));
 }
 
 function onMouseMove(event) {
