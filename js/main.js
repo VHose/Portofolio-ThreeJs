@@ -2207,7 +2207,7 @@ function buildScene() {
     // Spacing for 4 icons
     const iconData = [
         { type: 'email', label: 'EMAIL', sub: 'DIRECT INQUIRY', url: 'mailto:valentinohose@gmail.com', x: -4.5 },
-        { type: 'linkedin', label: 'LINKEDIN', sub: 'PROFESSIONAL NETWORK', url: 'https://linkedin.com/in/valentinohose', x: -1.5 },
+        { type: 'linkedin', label: 'LINKEDIN', sub: 'PROFESSIONAL NETWORK', url: 'https://www.linkedin.com/in/valentino-hose-09ba07366/', x: -1.5 },
         { type: 'github', label: 'GITHUB', sub: 'CODE REPOSITORIES', url: 'https://github.com/VHose', x: 1.5 },
         { type: 'instagram', label: 'INSTAGRAM', sub: 'VISUAL JOURNEY', url: 'https://instagram.com/legaseeh', x: 4.5 }
     ];
