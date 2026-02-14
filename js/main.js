@@ -1490,17 +1490,71 @@ function buildScene() {
     });
 
     // Text - Floating
+    // Text - Floating
     const nameText = createText("Valentino Hose", { fontSize: 0.8, color: CONFIG.colors.textHeader, anchorX: 'left' });
-    if (nameText) { nameText.position.set(0.5, 1.2, 0); introGroup.add(nameText); }
-
-    const roleText = createText("Google Student Ambassador", { fontSize: 0.35, color: 0x333333, anchorX: 'left' });
-    if (roleText) { roleText.position.set(0.5, 0.5, 0); introGroup.add(roleText); }
+    if (nameText) { nameText.position.set(0.5, 1.4, 0); introGroup.add(nameText); }
 
     const detailText = createText("Informatics Student & Web Developer", { fontSize: 0.25, color: 0x666666, anchorX: 'left' });
-    if (detailText) { detailText.position.set(0.5, 0.0, 0); introGroup.add(detailText); }
+    if (detailText) { detailText.position.set(0.5, 0.9, 0); introGroup.add(detailText); }
+
+    // ===== Tech Stack Grid =====
+    const techStackLabel = createText("Tech Stack", { fontSize: 0.2, color: CONFIG.colors.accent, anchorX: 'left' });
+    if (techStackLabel) { techStackLabel.position.set(0.5, 0.4, 0); introGroup.add(techStackLabel); }
+
+    const techStacks = [
+        { name: 'HTML', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg' },
+        { name: 'CSS', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg' },
+        { name: 'JS', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg' },
+        { name: 'React', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg' },
+        { name: 'Tailwind', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' },
+        { name: 'Laravel', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/laravel/laravel-plain.svg' },
+        { name: 'Python', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg' },
+        { name: 'Java', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg' },
+        { name: 'MySQL', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg' },
+        { name: 'MariaDB', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mariadb/mariadb-original.svg' },
+        { name: 'JSON', url: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/json/json-original.svg' },
+        { name: 'Cisco', url: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Cisco_logo_blue_2016.svg' }
+    ];
+
+    const iconSize = 0.35;
+    const gap = 0.5;
+    const cols = 6;
+    const startX = 0.5 + (iconSize / 2);
+    const startY = 0.0;
+
+    techStacks.forEach((tech, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+
+        sharedTextureLoader.load(tech.url, (texture) => {
+            const mat = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const geo = new THREE.PlaneGeometry(iconSize, iconSize);
+            const mesh = new THREE.Mesh(geo, mat);
+
+            // Positioning
+            mesh.position.set(
+                startX + (col * gap),
+                startY - (row * gap),
+                0
+            );
+
+            // Allow hover effect
+            mesh.userData = {
+                isInteractive: true,
+                hoverScale: 1.2,
+                title: tech.name
+            };
+            clickableObjects.push(mesh);
+            introGroup.add(mesh);
+        });
+    });
 
     const ctaText = createText("AVAILABLE FOR OPPORTUNITIES", { fontSize: 0.25, color: CONFIG.colors.accent, anchorX: 'left' });
-    if (ctaText) { ctaText.position.set(0.5, -0.8, 0); introGroup.add(ctaText); }
+    if (ctaText) { ctaText.position.set(0.5, -1.2, 0); introGroup.add(ctaText); }
 
     scene.add(introGroup);
     state.animatedObjects.push(introGroup); // Track for fade-in
