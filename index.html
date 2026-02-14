@@ -39,13 +39,32 @@
 
         <!-- Navbar (Top Right) -->
         <nav id="main-nav">
-            <ul>
+            <!-- Desktop Menu -->
+            <ul class="desktop-menu">
                 <li><a href="#" data-target="entrance">About Me</a></li>
                 <li><a href="#" data-target="experiences">Experiences</a></li>
                 <li><a href="#" data-target="projects">Projects</a></li>
                 <li><a href="#" data-target="achievements">Achievements</a></li>
                 <li><a href="#" data-target="contact">Contact</a></li>
             </ul>
+
+            <!-- Mobile Menu Button -->
+            <button id="hamburger-btn" aria-label="Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <!-- Mobile Menu Dropdown -->
+            <div id="mobile-menu" class="hidden">
+                <ul>
+                    <li><a href="#" data-target="entrance">About Me</a></li>
+                    <li><a href="#" data-target="experiences">Experiences</a></li>
+                    <li><a href="#" data-target="projects">Projects</a></li>
+                    <li><a href="#" data-target="achievements">Achievements</a></li>
+                    <li><a href="#" data-target="contact">Contact</a></li>
+                </ul>
+            </div>
         </nav>
 
         <!-- Unified Glassmorphism Panel (Dynamic Content) -->

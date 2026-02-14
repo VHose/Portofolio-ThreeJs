@@ -2343,6 +2343,14 @@ function onWheel(event) {
 }
 
 function onMouseMove(event) {
+    // If mobile menu is open, disable raycasting interactions
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileMenu && mobileMenu.classList.contains('visible')) {
+        document.body.style.cursor = 'default';
+        state.hoveredObject = null;
+        return;
+    }
+
     // Normalize mouse pos (-1 to +1)
     state.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     state.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -2365,22 +2373,103 @@ function onMouseMove(event) {
 }
 
 function onClick(event) {
+    // Prevent 3D clicks if mobile menu is open
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileMenu && mobileMenu.classList.contains('visible')) return;
+
+    // Prevent 3D clicks if clicking UI controls (like hamburger)
+    if (event.target.closest('#hamburger-btn')) return;
+
     if (state.hoveredObject && state.hoveredObject.userData.url) {
         window.open(state.hoveredObject.userData.url, '_blank');
     }
 }
 
-// Resizing
-window.addEventListener('resize', () => {
+// ===== Gyroscope / Device Orientation =====
+state.gyro = { x: 0, y: 0 };
+window.addEventListener('deviceorientation', (event) => {
+    if (event.gamma !== null && event.beta !== null) {
+        // Gamma is left-to-right tilt in degrees [-90, 90]
+        // Beta is front-to-back tilt in degrees [-180, 180]
+
+        // Normalize to -1 to 1 range
+        const gyroX = THREE.MathUtils.clamp(event.gamma / 30, -1, 1);
+        const gyroY = THREE.MathUtils.clamp((event.beta - 45) / 30, -1, 1); // 45 deg is roughly "holding phone naturally"
+
+        state.gyro.x = gyroX;
+        state.gyro.y = gyroY;
+
+        // Update parallax target if we are on mobile
+        if (window.innerWidth < 768) {
+            state.parallax.x = gyroX * CONFIG.scroll.parallax * 2;
+            state.parallax.y = -gyroY * CONFIG.scroll.parallax * 2;
+        }
+    }
+});
+
+// Resizing & FOV Adjustment
+function handleResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
+
+    // Adjust FOV for portrait mode to fit more content width-wise
+    if (camera.aspect < 1) {
+        camera.fov = 80; // Wider FOV for mobile portrait
+    } else {
+        camera.fov = 60; // Standard for desktop
+    }
+
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-});
+}
+
+window.addEventListener('resize', handleResize);
+handleResize(); // Initial call
 
 // Listeners
 window.addEventListener('wheel', onWheel);
 window.addEventListener('mousemove', onMouseMove);
 window.addEventListener('click', onClick);
+
+// ===== Touch Events (Mobile Scroll) =====
+let touchStartY = 0;
+window.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+}, { passive: false });
+
+window.addEventListener('touchmove', (e) => {
+    // e.preventDefault(); // Optional: prevent native scroll if needed
+    const touchY = e.touches[0].clientY;
+    const deltaY = touchStartY - touchY;
+
+    // Sensitivity factor for touch
+    const speed = 0.05;
+
+    state.scrollTarget -= deltaY * speed;
+
+    // Clamp
+    state.scrollTarget = Math.max(-495, Math.min(8, state.scrollTarget));
+
+    touchStartY = touchY;
+}, { passive: false });
+
+// ===== Hamburger Menu Logic =====
+const hamburgerBtn = document.getElementById('hamburger-btn');
+const mobileMenu = document.getElementById('mobile-menu');
+
+if (hamburgerBtn && mobileMenu) {
+    hamburgerBtn.addEventListener('click', () => {
+        hamburgerBtn.classList.toggle('active');
+        mobileMenu.classList.toggle('visible');
+    });
+
+    // Close menu when a link is clicked
+    mobileMenu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            hamburgerBtn.classList.remove('active');
+            mobileMenu.classList.remove('visible');
+        });
+    });
+}
 
 // Add dynamic spotlight to scene
 const followSpot = new THREE.SpotLight(0xFFF8DC, 2.0, 40, Math.PI / 4, 0.5, 1);
@@ -2404,7 +2493,7 @@ function animate() {
     followSpot.position.set(camera.position.x, CONFIG.room.height - 1, camera.position.z - 5);
     followSpotTarget.position.set(camera.position.x, 3, camera.position.z - 15);
 
-    // 2. Parallax Effect (Move Camera X/Y slightly based on mouse)
+    // 2. Parallax Effect (Move Camera X/Y slightly based on mouse or gyro)
     // We linearly interpolate camera position X and Y towards parallax target
     camera.position.x = THREE.MathUtils.lerp(camera.position.x, state.parallax.x, 0.1);
     camera.position.y = THREE.MathUtils.lerp(camera.position.y, 5.0 + state.parallax.y, 0.1); // Base height 5.0 matches hero center
@@ -2413,9 +2502,9 @@ function animate() {
     // Camera always looks slightly ahead
     // But we want a fixed straight view mostly.
     camera.rotation.set(0, 0, 0); // Reset
-    // Maybe slight rotation based on mouse too?
-    camera.rotation.y = -state.mouse.x * 0.05;
-    camera.rotation.x = state.mouse.y * 0.05;
+    // Maybe slight rotation based on mouse or gyro too?
+    camera.rotation.y = -state.mouse.x * 0.05 + (state.gyro ? state.gyro.x * 0.2 : 0);
+    camera.rotation.x = state.mouse.y * 0.05 + (state.gyro ? state.gyro.y * 0.2 : 0);
 
     // 4. Prompt Logic & Render Distance Culling
     const promptDistThreshold = 15; // Distance to show prompt

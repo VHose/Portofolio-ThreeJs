@@ -147,7 +147,8 @@ h1 {
     z-index: 1000;
 }
 
-#main-nav ul {
+/* Desktop Menu */
+.desktop-menu {
     list-style: none;
     padding: 0;
     margin: 0;
@@ -331,17 +332,151 @@ h1 {
     }
 }
 
-/* Navbar Styles */
+/* Mobile Menu Button - Hidden by default on desktop */
+#hamburger-btn {
+    display: none;
+    background: #0A192F;
+    /* Dark Blue for contrast against light BG */
+    border: 2px solid #B8860B;
+    /* Gold Border */
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 50px;
+    height: 50px;
+}
+
+#hamburger-btn span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background-color: #FFD887;
+    /* Bright Gold Lines */
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Mobile Menu Dropdown */
+#mobile-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0A0A0A;
+    /* Fully OPAQUE solid black */
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+    pointer-events: none;
+}
+
+#mobile-menu.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+#mobile-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: center;
+}
+
+#mobile-menu li {
+    margin: 25px 0;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+#mobile-menu.visible li {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Stagger animation for menu items */
+#mobile-menu.visible li:nth-child(1) {
+    transition-delay: 0.1s;
+}
+
+#mobile-menu.visible li:nth-child(2) {
+    transition-delay: 0.15s;
+}
+
+#mobile-menu.visible li:nth-child(3) {
+    transition-delay: 0.2s;
+}
+
+#mobile-menu.visible li:nth-child(4) {
+    transition-delay: 0.25s;
+}
+
+#mobile-menu.visible li:nth-child(5) {
+    transition-delay: 0.3s;
+}
+
+
+#mobile-menu li a {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    font-weight: 800 !important;
+    color: #FFFFFF !important;
+    text-shadow: 0 0 15px rgba(0, 0, 0, 0.9), 0 0 5px rgba(255, 216, 135, 0.4);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    transition: all 0.3s ease;
+    display: inline-block;
+    padding: 10px 0;
+    border-bottom: 2px solid rgba(255, 216, 135, 0.3);
+}
+
+#mobile-menu li a:hover,
+#mobile-menu li a:active {
+    color: #FFD887 !important;
+    border-bottom-color: #FFD887;
+    transform: scale(1.05);
+}
+
+/* Hamburger Animation State */
+#hamburger-btn.active span:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+}
+
+#hamburger-btn.active span:nth-child(2) {
+    opacity: 0;
+}
+
+#hamburger-btn.active span:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+}
+
+
+/* Navbar Styles - Desktop */
 #main-nav {
     position: absolute;
     top: 40px;
     right: 80px;
     /* Moved further left to avoid overlapping */
     pointer-events: auto;
-    z-index: 1000;
+    z-index: 1001;
+    /* Above menu */
 }
 
-#main-nav ul {
+/* Apply desktop styling to .desktop-menu instead of generic ul */
+.desktop-menu {
     display: flex;
     gap: 30px;
     list-style: none;
@@ -354,7 +489,8 @@ h1 {
     backdrop-filter: blur(5px);
 }
 
-#main-nav li a {
+/* Scope to desktop-menu specifically so it doesn't affect mobile menu */
+.desktop-menu li a {
     text-decoration: none;
     color: #333;
     font-size: 0.9rem;
@@ -364,7 +500,7 @@ h1 {
     transition: color 0.3s ease;
 }
 
-#main-nav li a:hover {
+.desktop-menu li a:hover {
     color: #B8860B;
 }
 
@@ -642,6 +778,86 @@ h1 {
 
 /* ===== Responsive Adjustments ===== */
 @media (max-width: 768px) {
+
+    /* Hide Desktop Menu */
+    .desktop-menu {
+        display: none !important;
+    }
+
+    /* Show Hamburger */
+    #hamburger-btn {
+        display: flex;
+    }
+
+    #main-nav {
+        top: 20px;
+        right: 20px;
+    }
+
+    /* Adjust Title */
+    h1 {
+        font-size: 1.2rem;
+        left: 20px;
+        top: 25px;
+        max-width: 200px;
+    }
+
+    /* Adjust Info Panel */
+    #info-panel {
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        /* Center it */
+        width: 85%;
+        max-width: 350px;
+        padding: 20px;
+        top: 50%;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    #info-panel.hidden {
+        transform: translate(-50%, -50%) scale(0.9) !important;
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    #info-panel.visible {
+        transform: translate(-50%, -50%) scale(1) !important;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Minimized state for mobile */
+    #info-panel.minimized {
+        width: auto;
+        min-width: 200px;
+        top: auto;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) !important;
+    }
+
+    /* Adjust Press Prompt */
+    #press-prompt {
+        bottom: 80px;
+        /* Above bottom controls if any */
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        width: 80%;
+        text-align: center;
+        font-size: 14px;
+        padding: 12px 20px;
+    }
+
+    #press-prompt.show {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    /* Debug Z hidden on mobile */
+    #debug-z {
+        display: none !important;
+    }
+
     #waypoint-nav {
         top: 20px;
         right: 15px;
