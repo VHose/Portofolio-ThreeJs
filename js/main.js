@@ -62,7 +62,7 @@ camera.position.set(0, 5.5, 8); // Start at user-defined limit
 camera.rotation.set(0, 0, 0);   // Facing Forward (towards negative Z)
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Cap at 1.5 for performance
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -603,6 +603,137 @@ function createRoom() {
     }
 }
 
+// Stone Texture Generator (Procedural Noise)
+function createStoneTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Base Grey
+    ctx.fillStyle = '#C0C0C0';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Add noise for stone speckles
+    for (let i = 0; i < 50000; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const shade = Math.floor(Math.random() * 50); // 0-50
+        // Randomly darker or lighter
+        ctx.fillStyle = Math.random() > 0.5
+            ? `rgba(0,0,0, ${Math.random() * 0.1})`
+            : `rgba(255,255,255, ${Math.random() * 0.1})`;
+        ctx.fillRect(x, y, 2, 2);
+    }
+
+    // Cracks / Veins
+    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 20; i++) {
+        ctx.beginPath();
+        let x = Math.random() * 512;
+        let y = Math.random() * 512;
+        ctx.moveTo(x, y);
+        for (let j = 0; j < 10; j++) {
+            x += (Math.random() - 0.5) * 50;
+            y += (Math.random() - 0.5) * 50;
+            ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    return texture;
+}
+
+// Helper: Roman Pillar / Stand
+const sharedStoneTexture = createStoneTexture();
+const sharedStoneMat = new THREE.MeshStandardMaterial({
+    map: sharedStoneTexture,
+    roughness: 0.9,
+    color: 0xDDDDDD
+});
+
+function createRomanPillar(height) {
+    const group = new THREE.Group();
+    const stoneMat = sharedStoneMat;
+
+    // Dimensions
+    const baseH = 0.4;
+    const capitalH = 0.3;
+    const shaftH = height - baseH - capitalH;
+    const radius = 0.4;
+
+    // 1. Base (Stepped) - Reverted to Standard
+    const baseGeo1 = new THREE.BoxGeometry(1.0, baseH / 2, 0.8);
+    const base1 = new THREE.Mesh(baseGeo1, stoneMat);
+    base1.position.y = baseH / 4;
+    group.add(base1);
+
+    const baseGeo2 = new THREE.CylinderGeometry(radius * 1.2, radius * 1.3, baseH / 2, 16);
+    const base2 = new THREE.Mesh(baseGeo2, stoneMat);
+    base2.position.y = baseH * 0.75;
+    group.add(base2);
+
+    // 2. Shaft (Cylinder) - Reverted
+    const shaftGeo = new THREE.CylinderGeometry(radius * 0.9, radius, shaftH, 24);
+    const shaft = new THREE.Mesh(shaftGeo, stoneMat);
+    shaft.position.y = baseH + shaftH / 2;
+    group.add(shaft);
+
+    // 3. Capital (Top detail) - Reverted
+    const capGeo1 = new THREE.CylinderGeometry(radius * 1.3, radius * 0.95, capitalH / 2, 16);
+    const cap1 = new THREE.Mesh(capGeo1, stoneMat);
+    cap1.position.y = baseH + shaftH + capitalH / 4;
+    group.add(cap1);
+
+    const capGeo2 = new THREE.BoxGeometry(1.2, capitalH / 2, 0.6);
+    const cap2 = new THREE.Mesh(capGeo2, stoneMat);
+    cap2.position.y = baseH + shaftH + capitalH * 0.75;
+    group.add(cap2);
+
+    return group;
+}
+
+// Helper: "Press That Picture" Prompt
+function createPressPrompt(parent) {
+    const group = new THREE.Group();
+    // Position below content initially
+    group.position.set(0, -2.0, 0.2);
+
+    // Background for text visibility
+    const bgGeo = new THREE.PlaneGeometry(3.5, 0.6);
+    const bgMat = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide
+    });
+    const bg = new THREE.Mesh(bgGeo, bgMat);
+    group.add(bg);
+
+    // Text
+    const textMesh = createText("Press That Picture", { fontSize: 0.25, color: 0xFFFFFF, anchorX: 'center' });
+    if (textMesh) {
+        textMesh.position.set(0, 0, 0.05); // Centered on BG
+        group.add(textMesh);
+    }
+
+    // Add to parent
+    parent.add(group);
+
+    // Metadata for animation
+    group.userData = {
+        isPrompt: true,
+        visible: false,
+        slideProgress: 0
+    };
+
+    return group;
+}
+
 // ===== Helpers (createText, createFramedPanel, createIcon, createWallFrame tetap sama) =====
 const loader = new FontLoader();
 let loadedFont = null;
@@ -617,7 +748,7 @@ function createText(content, options = {}) {
         font: loadedFont,
         size: size,
         height: 0.02,
-        curveSegments: 4,
+        curveSegments: 1, // Reduced for performance (was 4)
         bevelEnabled: false
     });
     geometry.computeBoundingBox();
@@ -1556,7 +1687,23 @@ function buildScene() {
     function createDetailedProject(z, imagePath, youtubeUrl, title, leftInfo, rightInfo) {
         const group = new THREE.Group();
         // Center position, higher up (y=5.0)
-        group.position.set(0, 5.0, z);
+        const frameHeightC = 2.36 + 0.2; // roughly 2.56
+        const bottomOfFrame = 5.0 - (frameHeightC / 2); // 5.0 - 1.28 = 3.72
+        group.position.set(0, 5.0, z); // Main Group Y=5.0
+
+        // --- 0. ROMAN PILLAR STAND ---
+        // Pillar height needs to reach from floor (y=0) to bottomOfFrame (y=3.72 relative to world, or -1.28 relative to group)
+        // Actually, easier to just add pillar to scene separately OR add to group with correct offset.
+        // Let's add to group. Group is at Y=5.0. Floor is at Y=0. So floor is at local y = -5.0.
+        // Pillar height = 3.72 (bottom of frame). 
+        // Pillar position y (center of pillar) = -5.0 + (3.72 / 2) = -3.14
+
+        const pillarH = 3.72;
+        const pillar = createRomanPillar(pillarH);
+        pillar.position.set(0, -5.0, 0); // Base at -5.0 (floor), but createRomanPillar builds UP from 0.
+        // createRomanPillar builds from y=0 up to height.
+        // So putting it at -5.0 means it starts at floor and goes up to -1.28 (just touching frame).
+        group.add(pillar);
 
         // --- 1. Central Monitor (Larger) ---
         // Screen Scale: x1.3 from original (3.2 * 1.3 = ~4.16)
@@ -1564,32 +1711,83 @@ function buildScene() {
         const screenHeight = 2.36; // 16:9 ratio
         const screenGeo = new THREE.PlaneGeometry(screenWidth, screenHeight);
 
-        // Load Image Texture
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(imagePath, (texture) => {
-            texture.colorSpace = THREE.SRGBColorSpace;
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-
-            // Use MeshBasicMaterial so the image looks "bright" like a screen
-            const material = new THREE.MeshBasicMaterial({
-                map: texture,
-                side: THREE.DoubleSide
-            });
-            const screen = new THREE.Mesh(screenGeo, material);
-            screen.position.z = 0.06; // Slightly protrude from frame
-
-            // Interaction Data for Monitor
-            screen.userData = {
-                isInteractive: true,
-                type: 'link',
-                url: youtubeUrl,
-                title: title
-            };
-            clickableObjects.push(screen);
-
-            group.add(screen);
+        // Default Material (Blue = Loading) to be distinct
+        const placeholderMat = new THREE.MeshBasicMaterial({
+            color: 0x0000AA, // Dark Blue default
+            side: THREE.DoubleSide
         });
+
+        const screen = new THREE.Mesh(screenGeo, placeholderMat);
+        screen.position.z = 0.085; // Fix: Move in front of frame (Frame front is ~0.075)
+
+        // Interaction Data
+        screen.userData = {
+            isInteractive: true,
+            type: 'link',
+            url: youtubeUrl,
+            title: title
+        };
+        clickableObjects.push(screen);
+        group.add(screen);
+
+        // "Press That Picture" Prompt (Initially Hidden)
+        const prompt = createPressPrompt(group);
+        // Position relative to screen: Center, Below
+        prompt.position.set(0, -1.8, 0.7); // Moved forward (z=0.7) to avoid clipping with pillar
+        group.userData.prompt = prompt; // Store ref for animation logic
+
+        // Add visible "LOADING..." text on the screen
+        const loadingText = createText("LOADING...", { fontSize: 0.3, color: 0xFFFFFF, anchorX: 'center' });
+        if (loadingText) {
+            loadingText.position.set(0, 0, 0.1);
+            group.add(loadingText);
+        }
+
+        // Load Image Texture Async
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(
+            imagePath,
+            (texture) => {
+                // Success
+                console.log("Texture loaded successfully:", imagePath);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+
+                // Create NEW material to ensure clean state
+                const newMat = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    color: 0xffffff,
+                    side: THREE.DoubleSide
+                });
+                screen.material = newMat;
+                screen.material.needsUpdate = true;
+
+                // Remove loading text
+                if (loadingText) {
+                    group.remove(loadingText);
+                    // dispose logic for text mesh/geometry if needed, but group.remove is enough for visual
+                }
+            },
+            undefined, // onProgress
+            (err) => {
+                // Error
+                console.error("Error loading texture:", imagePath, err);
+
+                // Change to Bright Red
+                screen.material.color.setHex(0xFF0000);
+
+                // Update Loading Text to ERROR
+                if (loadingText) {
+                    group.remove(loadingText); // Remove old one
+                }
+                const errText = createText("ERROR LOADING IMAGE\nCHECK CONSOLE", { fontSize: 0.2, color: 0xFFFFFF, anchorX: 'center' });
+                if (errText) {
+                    errText.position.set(0, 0, 0.1);
+                    group.add(errText);
+                }
+            }
+        );
 
         // Monitor Frame
         const frameW = screenWidth + 0.2;
@@ -1616,9 +1814,9 @@ function buildScene() {
 
         // --- 2. Side Panels (Glass/Paper Style) ---
         // Panel Dimensions
-        const panelW = 3.5;
-        const panelH = 3.0; // Slightly smaller than monitor
-        const panelDist = screenWidth / 2 + panelW / 2 + 0.5; // Distance from center
+        const panelW = 4.2;
+        const panelH = 7.5;
+        const panelDist = screenWidth / 2 + panelW / 2 + 0.4;
 
         const infoMat = new THREE.MeshStandardMaterial({
             color: 0xFFFAF0, // Cream paper
@@ -1629,58 +1827,125 @@ function buildScene() {
             side: THREE.DoubleSide
         });
 
-        // Helper to create text lines
-        function createInfoText(lines, startY, parent) {
-            let y = startY;
-            lines.forEach((line) => {
-                // Check if header (starts with *) or normal text
-                const isHeader = line.startsWith('*');
-                const txt = isHeader ? line.substring(1) : line;
-                const size = isHeader ? 0.18 : 0.14; // Tuned size
-                const color = isHeader ? 0x2C1810 : 0x333333; // Header dark, Body grey
+        // Helper to wrap text
+        function wrapText(text, maxChars) {
+            const words = text.split(' ');
+            let lines = [];
+            let currentLine = words[0];
 
-                // Simple text creation
-                const tMesh = createText(txt, { fontSize: size, color: color, anchorX: 'left' });
-                if (tMesh) {
-                    // Determine width roughly to center or justify? No, just left align
-                    // Offset x to start at left of panel
-                    tMesh.position.set(-panelW / 2 + 0.2, y, 0.02);
-                    parent.add(tMesh);
+            for (let i = 1; i < words.length; i++) {
+                if (currentLine.length + 1 + words[i].length <= maxChars) {
+                    currentLine += ' ' + words[i];
+                } else {
+                    lines.push(currentLine);
+                    currentLine = words[i];
                 }
-                y -= (isHeader ? 0.4 : 0.25);
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        // Helper to create text lines with auto-wrap AND CENTER ALIGN
+        function createInfoText(contentBlocks, parent) {
+            const maxChars = 45;
+
+            // 1. Calculate Layout & Total Height
+            let totalHeight = 0;
+            const layoutItems = [];
+
+            contentBlocks.forEach((block) => {
+                if (!block) {
+                    // Spacer
+                    const h = 0.2;
+                    totalHeight += h;
+                    layoutItems.push({ type: 'spacer', height: h });
+                    return;
+                }
+
+                const isHeader = block.startsWith('*');
+                const cleanText = isHeader ? block.substring(1) : block;
+                const fontSize = isHeader ? 0.22 : 0.14;
+                const color = isHeader ? 0x2C1810 : 0x333333;
+                const lineHeight = isHeader ? 0.35 : 0.25;
+
+                const lines = isHeader ? [cleanText] : wrapText(cleanText, maxChars);
+
+                lines.forEach(line => {
+                    totalHeight += lineHeight;
+                    layoutItems.push({
+                        type: 'text',
+                        text: line,
+                        height: lineHeight,
+                        size: fontSize,
+                        color: color
+                    });
+                });
+
+                if (isHeader) {
+                    const headerSpace = 0.1;
+                    totalHeight += headerSpace;
+                    layoutItems.push({ type: 'spacer', height: headerSpace });
+                }
+            });
+
+            // 2. Render from Top (StartY = totalHeight / 2)
+            let currentY = totalHeight / 2;
+
+            layoutItems.forEach(item => {
+                // Move cursor to center of this item
+                currentY -= item.height / 2;
+
+                if (item.type === 'text') {
+                    const tMesh = createText(item.text, {
+                        fontSize: item.size,
+                        color: item.color,
+                        anchorX: 'center' // CENTER ALIGN
+                    });
+                    if (tMesh) {
+                        tMesh.position.set(0, currentY, 0.02); // X=0 for center
+                        parent.add(tMesh);
+                    }
+                }
+
+                // Move cursor past this item
+                currentY -= item.height / 2;
             });
         }
 
-        // -- Left Panel (Technical) --
-        // Angled inward
+        // -- Left Panel --
         const leftGroup = new THREE.Group();
-        leftGroup.position.set(-panelDist, 0, 0.5);
-        leftGroup.rotation.y = Math.PI / 8; // Face user
+        leftGroup.position.set(-panelDist, 1.0, 0.5);
+        leftGroup.rotation.y = Math.PI / 8;
 
-        const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, panelH, 0.05), infoMat);
+        // Use taller panel
+        const detailPanelH = panelH;
+        const detailPanelGeo = new THREE.BoxGeometry(panelW, detailPanelH, 0.05);
+
+        const leftPanel = new THREE.Mesh(detailPanelGeo, infoMat);
         leftGroup.add(leftPanel);
 
-        // Add content to Left (Start from top)
-        createInfoText(leftInfo, panelH / 2 - 0.4, leftGroup);
+        // Add content to Left (Centered)
+        createInfoText(leftInfo, leftGroup);
         group.add(leftGroup);
 
 
-        // -- Right Panel (Features/Impact) --
+        // -- Right Panel --
         const rightGroup = new THREE.Group();
-        rightGroup.position.set(panelDist, 0, 0.5);
+        rightGroup.position.set(panelDist, 1.0, 0.5);
         rightGroup.rotation.y = -Math.PI / 8; // Face user
 
-        const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, panelH, 0.05), infoMat);
+        const rightPanel = new THREE.Mesh(detailPanelGeo, infoMat);
         rightGroup.add(rightPanel);
 
-        // Add content to Right
-        createInfoText(rightInfo, panelH / 2 - 0.4, rightGroup);
+        // Add content to Right (Centered)
+        createInfoText(rightInfo, rightGroup);
         group.add(rightGroup);
 
         scene.add(group);
         state.animatedObjects.push(group);
         return group;
     }
+
 
     // ===== Section 2: EXPERIENCES (Header -30, Content -42) =====
     const expZ = -30;
@@ -1703,6 +1968,7 @@ function buildScene() {
         { title: "Google Ambassador", sub: "2025 - 2026", detail: "" }
     ]);
 
+
     // ===== Section 3: PROJECTS (Header -70) =====
     const projZ = -70;
 
@@ -1717,32 +1983,89 @@ function buildScene() {
 
     // 1. PetShop (Center Z=-90)
     createDetailedProject(-90, 'assets/img/projects/petshop.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-5tPR69BEtZI-CuXKx866yf', "PetShop: E-Commerce",
-        ["*Tech Stack", "Laravel, React, MySQL", "", "*System Planning", "16 Entities, 20 Classes", "54 Diagrams"],
-        ["*Customer Features", "Search, Ratings, Cart", "Secure OTP Login", "", "*Admin Features", "Stock Tracking", "Sales Statistics"]
+        [
+            "*Description",
+            "This is a complete e-commerce platform designed to handle the shopping journey for users and a deep management system for administrators.",
+            "",
+            "*Customer Experience",
+            "Users can search for products, view specific details and ratings, and manage their shopping cart. To keep accounts safe, I added an OTP (One-Time Password) login system.",
+            "",
+            "*Administrative Control",
+            "The dashboard features 10 main menus for store management, including tools for updating categories and products, as well as stock logs that track why inventory is moving in or out."
+        ],
+        [
+            "*Business Tools",
+            "Owners can manage promos and discounts, view sales statistics to identify best-selling items, and print physical reports. The system handles order processing, refunds, and monitors active users.",
+            "",
+            "*Security & Data",
+            "Passwords are encrypted for safety, and OTP codes are set with a time limit so they do not stay in the database permanently.",
+            "",
+            "*Technical Docs",
+            "I documented the entire system architecture using 16 entities, 20 classes, and 54 activity and use case diagrams. Automatic email alerts for purchase confirmations and shipping are included."
+        ]
     );
 
     // 2. SYC 2025 (Center Z=-120)
     createDetailedProject(-120, 'assets/img/projects/syc2025.jpg', 'https://youtu.be/9l-27PN-bSY', "SYC 2025 Event Page",
-        ["*Tech Stack", "HTML, Tailwind CSS", "", "*Purpose", "Document Activities", "Event Documentation"],
-        ["*Key Features", "Clean Gallery", "Responsive Design", "Photo Showcase", "Modern Layout"]
+        [
+            "*Event Showcase",
+            "This was a project for the 'Redeemed' group during the SYC 2025 event. It serves as a visual record of the group's activities and photos, focusing on a clean layout to display event documentation.",
+            "",
+            "*Tech Stack",
+            "HTML, Tailwind CSS"
+        ],
+        [
+            "*Purpose",
+            "To capture the moments of the event with a modern design.",
+            "",
+            "*Highlights",
+            "Responsive Design, Clean Photo Gallery, Visual Documentation, User-Friendly Interface."
+        ]
     );
 
     // 3. Library Management (Center Z=-150)
     createDetailedProject(-150, 'assets/img/projects/library.jpg', 'https://youtu.be/9_cRlZKAcDk', "Library Management",
-        ["*Tech Stack", "Python, Pandas", "", "*Type", "Data-Driven App", "Console/GUI"],
-        ["*Core Features", "Browse Collection", "Borrow & Return", "Book Suggestions", "Transaction Logs"]
+        [
+            "*Overview",
+            "I built this program to manage book transactions in a library. It allows people to browse the catalog, borrow or return books, and suggest new titles for the library to acquire.",
+            "",
+            "*Tech Stack",
+            "Python, Pandas for data handling."
+        ],
+        [
+            "*Features",
+            "Efficient Book Tracking, User Management, Borrow/Return Logic, Suggestion System for New Acquisitions."
+        ]
     );
 
     // 4. Mexican Culinary (Center Z=-180)
     createDetailedProject(-180, 'assets/img/projects/mexican.jpg', 'https://www.youtube.com/playlist?list=PL5VVGqlQYy-4Edm7wwWaKG9P_k0382oND', "Mexican Culinary",
-        ["*Tech Stack", "HTML, CSS, JS", "JSON Data Storage", "", "*Category", "Educational Web"],
-        ["*Highlights", "Dynamic Data Loading", "Cultural Showcase", "Interactive Menu", "Rich Visuals"]
+        [
+            "*Educational Project",
+            "This educational project introduces users to the culinary traditions of Mexico. I used a basic JSON structure to organize and present data about different Mexican dishes to the audience.",
+            "",
+            "*Data Structure",
+            "JSON-based content management."
+        ],
+        [
+            "*Content",
+            "Interactive menu showcasing various traditional dishes. Dynamic data loading allows for easy updates and rich visual presentation."
+        ]
     );
 
     // 5. Catch the Food (Center Z=-210)
     createDetailedProject(-210, 'assets/img/projects/game.jpg', 'https://youtu.be/GoYq0F8fHiA', "Catch the Food",
-        ["*Tech Stack", "JavaScript, HTML", "Canvas API", "", "*Genre", "Arcade / Casual"],
-        ["*Gameplay", "Pou-style Catching", "Avoid Bombs", "High Score System", "Interactive Controls"]
+        [
+            "*Game Title",
+            "This is a simple arcade game inspired by the mechanics of the game Pou. Players control a character to catch traditional Mexican food while trying to avoid falling bombs that end the game.",
+            "",
+            "*Genre",
+            "Arcade / Casual"
+        ],
+        [
+            "*Mechanics",
+            "Reflex-based gameplay where players dodge obstacles and collect points. Built with Vanilla JavaScript and HTML Canvas."
+        ]
     );
 
     // ===== Section 4: ACHIEVEMENTS (Header -250) =====
@@ -2017,35 +2340,56 @@ function animate() {
     camera.rotation.y = -state.mouse.x * 0.05;
     camera.rotation.x = state.mouse.y * 0.05;
 
-    // 4. Fade In / Out Logic for Floating Objects
-    if (state.animatedObjects && state.animatedObjects.length > 0) {
-        state.animatedObjects.forEach(obj => {
-            if (!obj) return;
-            // Calculate distance along Z axis
-            const dist = Math.abs(camera.position.z - obj.position.z);
+    // 4. Prompt Logic & Render Distance Culling
+    const promptDistThreshold = 15; // Distance to show prompt
+    const renderLimit = 45; // Max distance to render heavy objects
 
-            // Fade range: Start fading in at 25 units, fully visible at 15 units
-            let opacity = 0;
-            if (dist < 25) {
-                opacity = 1 - ((dist - 10) / 15); // Simple linear fade
-                opacity = Math.max(0, Math.min(1, opacity));
+    state.animatedObjects.forEach(obj => {
+        const dist = Math.abs(camera.position.z - obj.position.z);
+
+        // A. Render Culling (Performance Fix)
+        if (dist > renderLimit) {
+            obj.visible = false;
+            // Skip further logic for this object if hidden
+            return;
+        } else {
+            obj.visible = true;
+        }
+
+        // B. Prompt Logic (Slide "Press That Picture")
+        if (obj.userData && obj.userData.prompt) {
+            const prompt = obj.userData.prompt;
+
+            // Logic: If close -> Slide In. If far -> Slide Out.
+            if (dist < promptDistThreshold) {
+                // Animate In
+                prompt.userData.slideProgress = THREE.MathUtils.lerp(prompt.userData.slideProgress, 1, 0.1);
+            } else {
+                // Animate Out
+                prompt.userData.slideProgress = THREE.MathUtils.lerp(prompt.userData.slideProgress, 0, 0.1);
             }
 
-            // Apply opacity to all child meshes
-            obj.traverse(child => {
-                if (child.isMesh) {
-                    // clone material if needed to avoid sharing issues (optional but safer)
-                    if (!child.userData.hasClonedMat) {
-                        child.material = child.material.clone();
-                        child.material.transparent = true;
-                        child.userData.hasClonedMat = true;
-                    }
-                    child.material.opacity = opacity;
+            // Apply Slide (Vertical Slide Up)
+            // Start Y: -2.0 (hidden below). Target Y: -1.4 (visible just under screen).
+
+            const startY = -2.0;
+            const endY = -1.4;
+            const currentY = THREE.MathUtils.lerp(startY, endY, prompt.userData.slideProgress);
+
+            prompt.position.y = currentY;
+            prompt.position.x = 0; // Centered horizontally
+
+            // Opacity
+            const opacity = prompt.userData.slideProgress;
+            prompt.traverse(child => {
+                if (child.material) {
+                    child.material.opacity = opacity * 0.8; // Max 0.8
+                    child.material.transparent = true;
                     child.visible = opacity > 0.01;
                 }
             });
-        });
-    }
+        }
+    });
 
     // DEBUG: Update Z Position Display
     const debugZ = document.getElementById('debug-z');
