@@ -2599,9 +2599,9 @@ function animate() {
 
     // Joystick overrules Mouse on mobile (or combines? typically one or other active)
     if (Math.abs(state.joystick.x) > 0.01 || Math.abs(state.joystick.y) > 0.01) {
-        // Joystick Control (Sensitivity adjusted)
-        camera.rotation.y = -state.joystick.x * 1.5; // Look left/right
-        camera.rotation.x = -state.joystick.y * 1.0; // Look up/down (inverted)
+        // Joystick Control (Sensitivity adjusted - Slowed down)
+        camera.rotation.y = -state.joystick.x * 0.5; // Look left/right
+        camera.rotation.x = -state.joystick.y * 0.5; // Look up/down (inverted)
     } else {
         // Mouse + Gyro Control (Standard) - Gyro removed per request
         camera.rotation.y = -state.mouse.x * 0.05;
