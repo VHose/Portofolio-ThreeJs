@@ -41,7 +41,9 @@ const state = {
     // Zone tracking
     currentZone: null,
     // Animated Floating Groups
-    animatedObjects: []
+    animatedObjects: [],
+    // Joystick Input
+    joystick: { x: 0, y: 0 }
 };
 
 // ===== Waypoint Definitions DELETED (Scroll based now) =====
@@ -87,7 +89,7 @@ scene.add(dirLight);
 function addWarmLight(x, y, z) {
     const light = new THREE.PointLight(0xFFFFFF, 1.0, 40);  // Brighter, longer range
     light.position.set(x, y, z);
-    scene.add(light);
+    roomGroup.add(light);
 }
 
 // ===== Environment: Grid Floor (Void) =====
@@ -187,7 +189,7 @@ function createChandelier(x, z) {
     group.add(spotlight);
 
     group.position.set(x, 0, z);
-    scene.add(group);
+    roomGroup.add(group);
     return group;
 }
 
@@ -227,13 +229,13 @@ function createSpotlight(targetX, targetZ, side) {
     // Target tetap di dinding (targetX)
     const targetObj = new THREE.Object3D();
     targetObj.position.set(targetX, 3, targetZ);
-    scene.add(targetObj);
+    roomGroup.add(targetObj);
     spotlight.target = targetObj;
 
     spotlight.castShadow = true;
     group.add(spotlight);
 
-    scene.add(group);
+    roomGroup.add(group);
     return group;
 }
 
@@ -322,6 +324,8 @@ function createWallTexture() {
 }
 
 // ===== Room Construction =====
+let roomGroup = new THREE.Group(); // Global group for room elements
+
 function createRoom() {
     const { width, height, length } = CONFIG.room;
     const halfW = width / 2;
@@ -337,7 +341,7 @@ function createRoom() {
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, 0, -length / 2);
     floor.receiveShadow = true;
-    scene.add(floor);
+    roomGroup.add(floor);
 
     // Curved Ceiling (Barrel vault)
     // The arch goes from left wall to right wall, apex at center top
@@ -361,7 +365,7 @@ function createRoom() {
     const ceiling = new THREE.Mesh(ceilingGeo, ceilMat);
     ceiling.rotation.set(Math.PI / 2, 0, 0);
     ceiling.position.set(0, height, -length / 2);
-    scene.add(ceiling);
+    roomGroup.add(ceiling);
 
     // End caps to close ceiling openings (front and back)
     const capMat = new THREE.MeshStandardMaterial({
@@ -376,14 +380,14 @@ function createRoom() {
     backGlass.rotation.z = 0;  // Same as front
     backGlass.rotation.y = 0;  // Faces into gallery (no flip needed)
     backGlass.position.set(0, height, -length);
-    scene.add(backGlass);
+    roomGroup.add(backGlass);
 
     // Front cap (semicircle at z = 0)
     const frontGlass = new THREE.Mesh(glassCapGeo, capMat);
     frontGlass.rotation.z = 0;
     frontGlass.rotation.y = Math.PI;
     frontGlass.position.set(0, height, 0);
-    scene.add(frontGlass);
+    roomGroup.add(frontGlass);
 
     // Wall Material - Simple white
     const wallMat = new THREE.MeshStandardMaterial({
@@ -396,7 +400,7 @@ function createRoom() {
     const leftWall = new THREE.Mesh(leftWallGeo, wallMat);
     leftWall.rotation.y = Math.PI / 2;
     leftWall.position.set(-halfW, height / 2, -length / 2);
-    scene.add(leftWall);
+    roomGroup.add(leftWall);
 
     // Right Wall with Door Opening
     // Door position on right wall
@@ -410,7 +414,7 @@ function createRoom() {
     const rightWallBefore = new THREE.Mesh(rightWallBeforeGeo, wallMat);
     rightWallBefore.rotation.y = -Math.PI / 2;
     rightWallBefore.position.set(halfW, height / 2, -rightBeforeDoorLen / 2);
-    scene.add(rightWallBefore);
+    roomGroup.add(rightWallBefore);
 
     // Part of right wall AFTER the door (from doorZ+doorWidth to end)
     const rightAfterDoorLen = length - Math.abs(doorZ) - doorWidth / 2;
@@ -418,27 +422,27 @@ function createRoom() {
     const rightWallAfter = new THREE.Mesh(rightWallAfterGeo, wallMat);
     rightWallAfter.rotation.y = -Math.PI / 2;
     rightWallAfter.position.set(halfW, height / 2, -(Math.abs(doorZ) + doorWidth / 2 + rightAfterDoorLen / 2));
-    scene.add(rightWallAfter);
+    roomGroup.add(rightWallAfter);
 
     // Part of right wall ABOVE the door
     const rightAboveDoorGeo = new THREE.PlaneGeometry(doorWidth, height - doorHeight);
     const rightAboveDoor = new THREE.Mesh(rightAboveDoorGeo, wallMat);
     rightAboveDoor.rotation.y = -Math.PI / 2;
     rightAboveDoor.position.set(halfW, height - (height - doorHeight) / 2, doorZ);
-    scene.add(rightAboveDoor);
+    roomGroup.add(rightAboveDoor);
 
     // Back Wall
     const backWallGeo = new THREE.PlaneGeometry(width, height);
     const backWall = new THREE.Mesh(backWallGeo, wallMat);
     backWall.position.set(0, height / 2, -length);
-    scene.add(backWall);
+    roomGroup.add(backWall);
 
     // Front Wall (solid, no door)
     const frontWallGeo = new THREE.PlaneGeometry(width, height);
     const frontWall = new THREE.Mesh(frontWallGeo, wallMat);
     frontWall.rotation.y = Math.PI;
     frontWall.position.set(0, height / 2, 0);
-    scene.add(frontWall);
+    roomGroup.add(frontWall);
 
     // Door Frame (Brown wood) on RIGHT wall
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A, roughness: 0.7 });
@@ -447,18 +451,18 @@ function createRoom() {
     const frameGeo = new THREE.BoxGeometry(0.2, doorHeight, 0.15);
     const frontFrame = new THREE.Mesh(frameGeo, frameMat);
     frontFrame.position.set(halfW, doorHeight / 2, doorZ - doorWidth / 2);
-    scene.add(frontFrame);
+    roomGroup.add(frontFrame);
 
     // Back door frame
     const backFrame = new THREE.Mesh(frameGeo, frameMat);
     backFrame.position.set(halfW, doorHeight / 2, doorZ + doorWidth / 2);
-    scene.add(backFrame);
+    roomGroup.add(backFrame);
 
     // Top door frame
     const topFrameGeo = new THREE.BoxGeometry(0.2, 0.15, doorWidth + 0.3);
     const topFrame = new THREE.Mesh(topFrameGeo, frameMat);
     topFrame.position.set(halfW, doorHeight, doorZ);
-    scene.add(topFrame);
+    roomGroup.add(topFrame);
 
     // SOLID DOOR (Brown wooden door)
     const doorMat = new THREE.MeshStandardMaterial({
@@ -469,14 +473,14 @@ function createRoom() {
     const doorGeo = new THREE.BoxGeometry(0.1, doorHeight - 0.2, doorWidth - 0.2);
     const door = new THREE.Mesh(doorGeo, doorMat);
     door.position.set(halfW + 0.05, doorHeight / 2, doorZ);
-    scene.add(door);
+    roomGroup.add(door);
 
     // Door handle
     const handleMat = new THREE.MeshStandardMaterial({ color: 0xB8860B, metalness: 0.8, roughness: 0.3 });
     const handleGeo = new THREE.SphereGeometry(0.08, 12, 12);
     const handle = new THREE.Mesh(handleGeo, handleMat);
     handle.position.set(halfW + 0.15, doorHeight / 2, doorZ - 0.8);
-    scene.add(handle);
+    roomGroup.add(handle);
 
     // Welcome mat (inside, near door)
     const matGeo = new THREE.PlaneGeometry(1.5, 2.5);
@@ -484,7 +488,7 @@ function createRoom() {
     const welcomeMat = new THREE.Mesh(matGeo, matMaterial);
     welcomeMat.rotation.x = -Math.PI / 2;
     welcomeMat.position.set(halfW - 1.5, 0.01, doorZ);
-    scene.add(welcomeMat);
+    roomGroup.add(welcomeMat);
 
     // Baseboards - All 4 walls
     const skirtMat = new THREE.MeshStandardMaterial({ color: 0x5D3A1A });
@@ -495,23 +499,23 @@ function createRoom() {
     const leftSkirt = new THREE.Mesh(skirtGeoLR, skirtMat);
     leftSkirt.rotation.y = Math.PI / 2;
     leftSkirt.position.set(-halfW + 0.04, 0.075, -length / 2);
-    scene.add(leftSkirt);
+    roomGroup.add(leftSkirt);
 
     const rightSkirt = new THREE.Mesh(skirtGeoLR, skirtMat);
     rightSkirt.rotation.y = -Math.PI / 2;
     rightSkirt.position.set(halfW - 0.04, 0.075, -length / 2);
-    scene.add(rightSkirt);
+    roomGroup.add(rightSkirt);
 
     // Front & Back baseboards (along width)
     const skirtGeoFB = new THREE.BoxGeometry(width, 0.15, 0.08);
 
     const frontSkirt = new THREE.Mesh(skirtGeoFB, skirtMat);
     frontSkirt.position.set(0, 0.075, -0.04);
-    scene.add(frontSkirt);
+    roomGroup.add(frontSkirt);
 
     const backSkirt = new THREE.Mesh(skirtGeoFB, skirtMat);
     backSkirt.position.set(0, 0.075, -length + 0.04);
-    scene.add(backSkirt);
+    roomGroup.add(backSkirt);
 
     // NOTE: Warm lights are added in buildScene loop — removed duplicates here
 
@@ -524,22 +528,22 @@ function createRoom() {
     const leftCornice = new THREE.Mesh(new THREE.BoxGeometry(length, corniceH, corniceD), corniceMat);
     leftCornice.rotation.y = Math.PI / 2;
     leftCornice.position.set(-halfW + corniceD / 2, height - corniceH / 2, -length / 2);
-    scene.add(leftCornice);
+    roomGroup.add(leftCornice);
 
     // Right Cornice
     const rightCornice = new THREE.Mesh(new THREE.BoxGeometry(length, corniceH, corniceD), corniceMat);
     rightCornice.rotation.y = -Math.PI / 2;
     rightCornice.position.set(halfW - corniceD / 2, height - corniceH / 2, -length / 2);
-    scene.add(rightCornice);
+    roomGroup.add(rightCornice);
 
     // Front/Back Cornice
     const endCorniceGeo = new THREE.BoxGeometry(width, corniceH, corniceD);
     const frontCornice = new THREE.Mesh(endCorniceGeo, corniceMat);
     frontCornice.position.set(0, height - corniceH / 2, -corniceD / 2);
-    scene.add(frontCornice);
+    roomGroup.add(frontCornice);
     const backCornice = new THREE.Mesh(endCorniceGeo, corniceMat);
     backCornice.position.set(0, height - corniceH / 2, -length + corniceD / 2);
-    scene.add(backCornice);
+    roomGroup.add(backCornice);
 
     // ===== Vertical Corner Trims (Pillars) =====
     const cornerW = 0.25; // Width of the vertical line
@@ -548,22 +552,22 @@ function createRoom() {
     // Front Left Corner
     const flTrim = new THREE.Mesh(cornerGeo, corniceMat);
     flTrim.position.set(-halfW + cornerW / 2, height / 2, -cornerW / 2);
-    scene.add(flTrim);
+    roomGroup.add(flTrim);
 
     // Front Right Corner
     const frTrim = new THREE.Mesh(cornerGeo, corniceMat);
     frTrim.position.set(halfW - cornerW / 2, height / 2, -cornerW / 2);
-    scene.add(frTrim);
+    roomGroup.add(frTrim);
 
     // Back Left Corner
     const blTrim = new THREE.Mesh(cornerGeo, corniceMat);
     blTrim.position.set(-halfW + cornerW / 2, height / 2, -length + cornerW / 2);
-    scene.add(blTrim);
+    roomGroup.add(blTrim);
 
     // Back Right Corner
     const brTrim = new THREE.Mesh(cornerGeo, corniceMat);
     brTrim.position.set(halfW - cornerW / 2, height / 2, -length + cornerW / 2);
-    scene.add(brTrim);
+    roomGroup.add(brTrim);
 
     // ===== Ceiling Structure (Beams/Arches) =====
     // [USER] ATUR GENTENG/ATAP DISINI (Jarak, Ketebalan, Rotasi)
@@ -579,8 +583,11 @@ function createRoom() {
         const arch = new THREE.Mesh(archGeo, archMat);
         arch.position.set(0, height, z);
 
-        scene.add(arch);
+        roomGroup.add(arch);
     }
+
+    // Add roomGroup to scene
+    scene.add(roomGroup);
 }
 
 // Stone Texture Generator (Procedural Noise)
@@ -1454,6 +1461,14 @@ function createIconFrame(type, url, position, label, sub) {
 function buildScene() {
     createRoom();
 
+    // Check for mobile and hide room if needed
+    if (window.innerWidth < 768) {
+        roomGroup.visible = false;
+        // Optionally change background color for mobile void
+        scene.background = new THREE.Color(0x050505); // Darker background for void
+        scene.fog = new THREE.Fog(0x050505, 10, 150);
+    }
+
     // ===== Section 1: ABOUT ME (Z = 0) =====
     // Floating "Hero" Section
     const introGroup = new THREE.Group();
@@ -1494,7 +1509,7 @@ function buildScene() {
     const nameText = createText("Valentino Hose", { fontSize: 0.8, color: CONFIG.colors.textHeader, anchorX: 'left' });
     if (nameText) { nameText.position.set(0.5, 1.4, 0); introGroup.add(nameText); }
 
-    const detailText = createText("Informatics Student & Web Developer", { fontSize: 0.25, color: 0x666666, anchorX: 'left' });
+    const detailText = createText("Informatics Student & Web Developer | Laravel Enthusiast", { fontSize: 0.25, color: 0x666666, anchorX: 'left' });
     if (detailText) { detailText.position.set(0.5, 0.9, 0); introGroup.add(detailText); }
 
     // ===== Tech Stack Grid =====
@@ -1697,9 +1712,10 @@ function buildScene() {
         group.add(frame);
 
         // Title (Floating above monitor)
+        const titleColor = window.innerWidth < 768 ? 0xFFFFFF : CONFIG.colors.textHeader; // White on mobile
         const titleMesh = createText(title, {
             fontSize: 0.35,
-            color: CONFIG.colors.textHeader,
+            color: titleColor,
             anchorX: 'center'
         });
         if (titleMesh) {
@@ -2307,6 +2323,73 @@ loader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/optimer_b
     if (loaderEl) loaderEl.remove();
 });
 
+// ===== Joystick Control =====
+function createJoystick() {
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickKnob = document.getElementById('joystick-knob');
+    let startX = 0, startY = 0;
+    let moveX = 0, moveY = 0;
+    const maxDist = 35; // Max drag distance from center
+
+    if (!joystickZone || !joystickKnob) return;
+
+    joystickZone.addEventListener('touchstart', (e) => {
+        // e.preventDefault(); // Prevent scroll interaction on joystick
+        const touch = e.touches[0];
+        const rect = joystickZone.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        // Start relative to center (initially 0,0 usually, but we track drag)
+        startX = touch.clientX;
+        startY = touch.clientY;
+
+        joystickKnob.style.transition = 'none';
+    }, { passive: false });
+
+    joystickZone.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // Critical to stop scrolling while using joystick
+        const touch = e.touches[0];
+
+        // Calculate offset from center of the joystick zone
+        const rect = joystickZone.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        let deltaX = touch.clientX - centerX;
+        let deltaY = touch.clientY - centerY;
+
+        // Clamp distance
+        const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (dist > maxDist) {
+            const angle = Math.atan2(deltaY, deltaX);
+            deltaX = Math.cos(angle) * maxDist;
+            deltaY = Math.sin(angle) * maxDist;
+        }
+
+        // Move knob
+        joystickKnob.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+
+        // Update State (-1 to 1)
+        state.joystick.x = deltaX / maxDist;
+        state.joystick.y = deltaY / maxDist;
+
+    }, { passive: false });
+
+    joystickZone.addEventListener('touchend', (e) => {
+        // Reset
+        joystickKnob.style.transition = 'transform 0.2s';
+        joystickKnob.style.transform = `translate(-50%, -50%)`;
+        state.joystick.x = 0;
+        state.joystick.y = 0;
+    });
+}
+
+// Init Joystick
+if (window.innerWidth < 768) {
+    createJoystick();
+}
+
 // ===== Navbar Listeners =====
 document.querySelectorAll('#main-nav a').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -2420,6 +2503,17 @@ function handleResize() {
 
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+
+    // Explicitly handle room visibility on resize
+    if (window.innerWidth < 768) {
+        if (roomGroup) roomGroup.visible = false;
+        scene.background = new THREE.Color(0x050505);
+        scene.fog = new THREE.Fog(0x050505, 10, 150);
+    } else {
+        if (roomGroup) roomGroup.visible = true;
+        scene.background = new THREE.Color(0xF0F0F0); // Restore original background (approx)
+        scene.fog = new THREE.Fog(0xF0F0F0, 10, 50); // Restore original fog
+    }
 }
 
 window.addEventListener('resize', handleResize);
@@ -2502,9 +2596,17 @@ function animate() {
     // Camera always looks slightly ahead
     // But we want a fixed straight view mostly.
     camera.rotation.set(0, 0, 0); // Reset
-    // Maybe slight rotation based on mouse or gyro too?
-    camera.rotation.y = -state.mouse.x * 0.05 + (state.gyro ? state.gyro.x * 0.2 : 0);
-    camera.rotation.x = state.mouse.y * 0.05 + (state.gyro ? state.gyro.y * 0.2 : 0);
+
+    // Joystick overrules Mouse on mobile (or combines? typically one or other active)
+    if (Math.abs(state.joystick.x) > 0.01 || Math.abs(state.joystick.y) > 0.01) {
+        // Joystick Control (Sensitivity adjusted)
+        camera.rotation.y = -state.joystick.x * 1.5; // Look left/right
+        camera.rotation.x = -state.joystick.y * 1.0; // Look up/down (inverted)
+    } else {
+        // Mouse + Gyro Control (Standard) - Gyro removed per request
+        camera.rotation.y = -state.mouse.x * 0.05;
+        camera.rotation.x = state.mouse.y * 0.05;
+    }
 
     // 4. Prompt Logic & Render Distance Culling
     const promptDistThreshold = 15; // Distance to show prompt

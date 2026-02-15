@@ -138,6 +138,51 @@ h1 {
     }
 }
 
+/* Joystick Styles */
+#joystick-zone {
+    position: fixed;
+    bottom: 15vh;
+    right: 40px;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    z-index: 1000;
+    touch-action: none;
+    /* Prevent scrolling when touching joystick */
+    display: none;
+    /* Hidden by default (desktop) */
+}
+
+#joystick-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    background: rgba(184, 134, 11, 0.8);
+    /* Gold accent */
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    /* Center it */
+    pointer-events: none;
+    /* Let touches pass through to zone */
+    transition: transform 0.1s;
+}
+
+/* Show on Mobile */
+@media (max-width: 768px) {
+    #joystick-zone {
+        display: block;
+    }
+
+    /* Hide specific UI elements that might obstruct or be redundant */
+    #debug-z {
+        display: none !important;
+    }
+}
+
 /* Navbar Styles */
 #main-nav {
     position: absolute;
